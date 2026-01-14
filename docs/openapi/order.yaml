@@ -1,0 +1,112 @@
+openapi: 3.0.3
+info:
+  title: Order Service API
+  description: Servicio de pedidos del E-commerce.
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8084
+    description: Order Service (local)
+
+tags:
+  - name: Orders
+    description: Gestión de pedidos
+
+paths:
+  /orders:
+    post:
+      tags: [Orders]
+      summary: Crear pedido
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateOrderRequest'
+      responses:
+        '201':
+          description: Pedido creado
+
+    get:
+      tags: [Orders]
+      summary: Listar pedidos
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Lista de pedidos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/OrderResponse'
+
+  /orders/{id}:
+    get:
+      tags: [Orders]
+      summary: Obtener pedido por ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Pedido encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderResponse'
+        '404':
+          description: Pedido no encontrado
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    CreateOrderRequest:
+      type: object
+      required: [address]
+      properties:
+        address:
+          type: string
+
+    OrderItem:
+      type: object
+      properties:
+        productId:
+          type: string
+        quantity:
+          type: integer
+        price:
+          type: number
+
+    OrderResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+        status:
+          type: string
+          enum: [CREATED, PAID, CANCELLED]
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItem'
+        total:
+          type: number
+        createdAt:
+          type: string
+          format: date-time

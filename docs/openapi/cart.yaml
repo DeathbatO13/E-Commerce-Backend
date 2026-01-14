@@ -1,0 +1,140 @@
+openapi: 3.0.3
+info:
+  title: Cart Service API
+  description: Servicio de carrito de compras del E-commerce.
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8083
+    description: Cart Service (local)
+
+tags:
+  - name: Cart
+    description: Gestión del carrito de compras
+
+paths:
+  /cart:
+    get:
+      tags: [Cart]
+      summary: Obtener carrito del usuario autenticado
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Carrito del usuario
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CartResponse'
+        '401':
+          description: No autenticado
+
+    delete:
+      tags: [Cart]
+      summary: Vaciar carrito
+      security:
+        - bearerAuth: []
+      responses:
+        '204':
+          description: Carrito vaciado
+
+  /cart/items:
+    post:
+      tags: [Cart]
+      summary: Agregar producto al carrito
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddItemRequest'
+      responses:
+        '200':
+          description: Producto agregado al carrito
+
+  /cart/items/{productId}:
+    put:
+      tags: [Cart]
+      summary: Actualizar cantidad de un producto
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateItemRequest'
+      responses:
+        '200':
+          description: Cantidad actualizada
+
+    delete:
+      tags: [Cart]
+      summary: Eliminar producto del carrito
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Producto eliminado del carrito
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    AddItemRequest:
+      type: object
+      required: [productId, quantity]
+      properties:
+        productId:
+          type: string
+        quantity:
+          type: integer
+          minimum: 1
+
+    UpdateItemRequest:
+      type: object
+      required: [quantity]
+      properties:
+        quantity:
+          type: integer
+          minimum: 1
+
+    CartItem:
+      type: object
+      properties:
+        productId:
+          type: string
+        quantity:
+          type: integer
+        price:
+          type: number
+
+    CartResponse:
+      type: object
+      properties:
+        userId:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CartItem'
+        total:
+          type: number
