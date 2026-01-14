@@ -1,0 +1,8 @@
+spring:
+  application:
+    name: auth-service
+  jpa:
+    open-in-view: false
+
+server:
+  port: 8081
