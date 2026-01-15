@@ -69,6 +69,13 @@
             <version>2.3.0</version>
         </dependency>
 
+        <!-- JWT -->
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-api</artifactId>
+            <version>0.11.5</version>
+        </dependency>
+
         <!-- TEST -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
