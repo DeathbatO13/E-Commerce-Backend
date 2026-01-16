@@ -23,6 +23,11 @@ public class UserRepositoryAdapter implements UserRepository {
     }
 
     @Override
+    public boolean existByEmail(String email) {
+        return jpaRepository.existsByEmail(email);
+    }
+
+    @Override
     public User save(User user) {
         return UserMapper.toDomain(
                 jpaRepository.save(UserMapper.toEntity(user))
