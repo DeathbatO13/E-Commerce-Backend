@@ -170,4 +170,4 @@ Este MVP busca demostrar:
 
 ## Estado del Proyecto
 
-🚧 En fase de definición del MVP
+🚧 En desarrollo 
