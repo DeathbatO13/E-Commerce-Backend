@@ -1,0 +1,31 @@
+version: "3.9"
+
+services:
+
+  postgres:
+    image: postgres:16
+    container_name: auth-postgres
+    environment:
+      POSTGRES_DB: auth_db
+      POSTGRES_USER: auth_user
+      POSTGRES_PASSWORD: auth_pass
+    ports:
+      - "5432:5432"
+    volumes:
+      - auth_pg_data:/var/lib/postgresql/data
+
+  auth-service:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: auth-service
+    depends_on:
+      - postgres
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      JWT_SECRET: very-secret-key-very-secret-key
+    ports:
+      - "8081:8081"
+
+volumes:
+  auth_pg_data:

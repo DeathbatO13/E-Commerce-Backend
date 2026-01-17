@@ -1,11 +1,11 @@
 package com.e_commerce.auth_service.application.service;
 
-import com.e_commerce.auth_service.config.JwtProvider;
 import com.e_commerce.auth_service.domain.model.Role;
 import com.e_commerce.auth_service.domain.model.User;
 import com.e_commerce.auth_service.domain.port.in.LoginUseCase;
 import com.e_commerce.auth_service.domain.port.in.RegisterUserUseCase;
 import com.e_commerce.auth_service.domain.port.out.PasswordEncoderPort;
+import com.e_commerce.auth_service.domain.port.out.TokenGeneratorPort;
 import com.e_commerce.auth_service.domain.port.out.UserRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
@@ -18,16 +18,16 @@ import java.util.UUID;
 @Transactional
 public class AuthApplicationService implements LoginUseCase, RegisterUserUseCase{
 
-    private final UserRepository userRepository;
-    private final PasswordEncoderPort passwordEncoder;
-    private final JwtProvider jwtProvider;
+    UserRepository userRepository;
+    PasswordEncoderPort passwordEncoder;
+    TokenGeneratorPort tokenGenerator;
 
     public AuthApplicationService(UserRepository userRepository, PasswordEncoderPort passwordEncoder,
-                                  JwtProvider jwtProvider){
+                                  TokenGeneratorPort tokenGenerator){
 
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
-        this.jwtProvider = jwtProvider;
+        this.tokenGenerator = tokenGenerator;
     }
 
 
@@ -40,7 +40,7 @@ public class AuthApplicationService implements LoginUseCase, RegisterUserUseCase
             throw new IllegalArgumentException("Invalid credentials");
         }
 
-        return jwtProvider.generarToken(user);
+        return tokenGenerator.generateToken(String.valueOf(user.getId()), email);
 
     }
 

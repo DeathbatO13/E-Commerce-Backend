@@ -10,6 +10,8 @@ import org.springframework.stereotype.Component;
 
 import java.util.Date;
 
+import static java.util.stream.Collectors.toList;
+
 @Component
 public class JwtProvider{
 
@@ -23,7 +25,11 @@ public class JwtProvider{
         return Jwts.builder()
                 .setSubject(user.getId().toString())
                 .claim("email", user.getEmail())
-                .claim("roles", user.getRoles())
+                .claim("roles", user.getRoles()
+                        .stream()
+                        .map(Enum::name)
+                        .toList()
+                )
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + expiration))
                 .signWith(Keys.hmacShaKeyFor(secret.getBytes()), SignatureAlgorithm.HS256)

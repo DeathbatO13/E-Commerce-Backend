@@ -43,9 +43,6 @@ public class registerTest {
         String email = "test@mail.com";
         String rawPassword = "password";
 
-        when(userRepository.findByEmail(email))
-                .thenReturn(Optional.empty());
-
         when(passwordEncoder.encode(rawPassword))
                 .thenReturn("hashed-password");
 
