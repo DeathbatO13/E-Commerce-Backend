@@ -20,7 +20,7 @@ Variables principales en `application.yml`:
 * **security.jwt.secret**: clave secreta para firmar los JWT
 * **security.jwt.expiration**: tiempo de expiración del token en ms
 
-La base de datos productiva debe crearse de manera externa (por ejemplo PostgreSQL/MySQL). Para tests se usa H2 en memoria.
+La base de datos productiva debe crearse de manera externa (en este caso se hace uso de PostgreSQL). Para tests se usa H2 en memoria.
 
 ## Endpoints
 
