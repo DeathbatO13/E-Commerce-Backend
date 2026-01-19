@@ -42,6 +42,7 @@ public class registerTest {
     void registroExitoso() {
         String email = "test@mail.com";
         String rawPassword = "password";
+        String fullname = "Administrator";
 
         when(passwordEncoder.encode(rawPassword))
                 .thenReturn("hashed-password");
@@ -49,7 +50,7 @@ public class registerTest {
         when(userRepository.save(any(User.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        User user = authService.register(email, rawPassword);
+        User user = authService.register(email, rawPassword, fullname);
 
         assertNotNull(user);
         assertEquals(email, user.getEmail());
@@ -65,6 +66,7 @@ public class registerTest {
                 UUID.randomUUID(),
                 "test@mail.com",
                 "hashed",
+                "Administrator",
                 Set.of(Role.CLIENT),
                 true
         );

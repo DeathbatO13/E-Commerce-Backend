@@ -13,6 +13,7 @@ class UserMapper{
                 entity.getId(),
                 entity.getEmail(),
                 entity.getPassword(),
+                entity.getFullname(),
                 entity.getRoles().stream()
                         .map(Role::valueOf)
                         .collect(Collectors.toSet()),
@@ -25,6 +26,7 @@ class UserMapper{
                 .id(user.getId())
                 .email(user.getEmail())
                 .password(user.getPassword())
+                .fullname(user.getFullname())
                 .roles(user.getRoles().stream()
                         .map(Enum::name)
                         .collect(Collectors.toSet()))

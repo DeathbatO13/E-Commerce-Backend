@@ -27,6 +27,9 @@ public class UserJpaEntity{
     @Column(nullable = false)
     private String password;
 
+    @Column(nullable = false)
+    private String fullname;
+
     @ElementCollection(fetch = FetchType.EAGER)
     @Enumerated(EnumType.STRING)
     private Set<String> roles;
