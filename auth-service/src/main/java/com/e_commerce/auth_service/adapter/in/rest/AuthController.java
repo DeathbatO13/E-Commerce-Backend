@@ -28,7 +28,8 @@ public class AuthController{
     public RegisterResponse register(@RequestBody @Valid RegisterRequest request){
         User user = registerUserUseCase.register(
                 request.email(),
-                request.password()
+                request.password(),
+                request.fullname()
         );
 
         return new RegisterResponse(

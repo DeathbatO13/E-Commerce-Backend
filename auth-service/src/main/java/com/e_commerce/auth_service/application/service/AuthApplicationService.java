@@ -45,7 +45,7 @@ public class AuthApplicationService implements LoginUseCase, RegisterUserUseCase
     }
 
     @Override
-    public User register(String email, String rawPassword){
+    public User register(String email, String rawPassword, String fullname){
         if (userRepository.existByEmail(email)) {
             throw new IllegalArgumentException("Email already registered");
         }
@@ -54,6 +54,7 @@ public class AuthApplicationService implements LoginUseCase, RegisterUserUseCase
                 UUID.randomUUID(),
                 email,
                 passwordEncoder.encode(rawPassword),
+                fullname,
                 Set.of(Role.CLIENT),
                 true
         );

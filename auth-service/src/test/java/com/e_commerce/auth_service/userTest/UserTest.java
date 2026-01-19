@@ -18,6 +18,7 @@ public class UserTest {
                 UUID.randomUUID(),
                 "test@test.com",
                 "contrasenahasheada",
+                "Administartor",
                 Set.of(Role.CLIENT),
                 true
         );
