@@ -22,9 +22,23 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-
+/**
+ * Pruebas unitarias para los casos de uso principales del servicio de autenticación
+ * {@link AuthApplicationService}: registro y login.
+ * <p>
+ * Se utiliza Mockito para simular los puertos de salida del dominio y aislar
+ * completamente las pruebas del servicio de aplicación.
+ * </p>
+ * <p>
+ * Cubre los flujos felices (happy path) de:
+ * <ul>
+ *   <li>Registro exitoso de un nuevo usuario</li>
+ *   <li>Inicio de sesión exitoso con credenciales válidas</li>
+ * </ul>
+ * </p>
+ */
 @ExtendWith(MockitoExtension.class)
-public class registerTest {
+public class RegisterTest {
 
     @Mock
     UserRepository userRepository;
@@ -38,6 +52,13 @@ public class registerTest {
     @InjectMocks
     AuthApplicationService authService;
 
+    /**
+     * Verifica el flujo completo de registro exitoso:
+     * - Codificación de la contraseña
+     * - Persistencia del usuario con rol por defecto
+     * - Retorno de la entidad persistida
+     * - Llamada correcta al repositorio
+     */
     @Test
     void registroExitoso() {
         String email = "test@mail.com";
@@ -60,6 +81,13 @@ public class registerTest {
 
     }
 
+    /**
+     * Verifica el flujo completo de inicio de sesión exitoso:
+     * - Búsqueda del usuario por email
+     * - Verificación correcta de la contraseña
+     * - Generación del token
+     * - Retorno del token generado
+     */
     @Test
     void hacerInicioExitoso() {
         User user = new User(

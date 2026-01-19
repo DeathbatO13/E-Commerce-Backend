@@ -13,7 +13,17 @@ import org.springframework.stereotype.Service;
 import java.util.Set;
 import java.util.UUID;
 
-
+/**
+ * Servicio de aplicación que implementa los casos de uso principales de autenticación:
+ * registro de usuarios y login con generación de token JWT.
+ * <p>
+ * Actúa como orquestador entre los puertos de entrada (casos de uso) y los puertos de salida
+ * (repositorio, codificador de contraseñas y generador de tokens).
+ * </p>
+ * <p>
+ * Todas las operaciones son transaccionales para garantizar consistencia en la base de datos.
+ * </p>
+ */
 @Service
 @Transactional
 public class AuthApplicationService implements LoginUseCase, RegisterUserUseCase{
@@ -30,7 +40,18 @@ public class AuthApplicationService implements LoginUseCase, RegisterUserUseCase
         this.tokenGenerator = tokenGenerator;
     }
 
-
+    /**
+     * Autentica a un usuario mediante email y contraseña.
+     * <p>
+     * Verifica la existencia del usuario y la validez de la contraseña.
+     * Si las credenciales son correctas, genera y retorna un token JWT.
+     * </p>
+     *
+     * @param email        correo electrónico del usuario
+     * @param rawPassword  contraseña en texto plano proporcionada por el cliente
+     * @return token JWT válido para autenticación en la API
+     * @throws IllegalArgumentException si las credenciales son inválidas
+     */
     @Override
     public String login(String email, String rawPassword) {
         User user = userRepository.findByEmail(email)
@@ -44,6 +65,19 @@ public class AuthApplicationService implements LoginUseCase, RegisterUserUseCase
 
     }
 
+    /**
+     * Registra un nuevo usuario en el sistema.
+     * <p>
+     * Valida que el email no esté ya registrado, codifica la contraseña,
+     * asigna el rol por defecto (CLIENT) y persiste el usuario.
+     * </p>
+     *
+     * @param email       correo electrónico (debe ser único)
+     * @param rawPassword contraseña en texto plano
+     * @param fullname    nombre completo del usuario
+     * @return el usuario recién creado y persistido
+     * @throws IllegalArgumentException si el email ya está registrado
+     */
     @Override
     public User register(String email, String rawPassword, String fullname){
         if (userRepository.existByEmail(email)) {

@@ -3,6 +3,10 @@ package com.e_commerce.auth_service.domain.model;
 import java.util.Set;
 import java.util.UUID;
 
+/**
+ * Entidad de dominio que representa un usuario del sistema.
+ * Clase inmutable con información básica y roles.
+ */
 public class User {
 
     private final UUID id;
