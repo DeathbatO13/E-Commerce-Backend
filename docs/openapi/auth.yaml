@@ -85,27 +85,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiError'
 
-    post:
-      tags: [Users]
-      summary: Crear usuario (admin o cliente)
-      security:
-        - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/CreateUserRequest'
-      responses:
-        '201':
-          description: Usuario creado
-        '403':
-          description: Acceso denegado
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-
   /users/{id}/role:
     put:
       tags: [Users]
