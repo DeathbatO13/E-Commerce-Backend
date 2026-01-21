@@ -2,7 +2,9 @@ package com.e_commerce.auth_service.domain.port.out;
 
 import com.e_commerce.auth_service.domain.model.User;
 
+import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 /**
  * Puerto de salida (output port) que define el contrato para el acceso a la persistencia
@@ -53,4 +55,14 @@ public interface UserRepository {
      * @return el usuario persistido (con ID generado si era nuevo)
      */
     User save(User user);
+
+    /**
+     * Busca un usuario por su id.
+     *
+     * @param id el id único del usuario
+     * @return Optional con el usuario encontrado o vacío si no existe
+     */
+    Optional<User> findById(UUID id);
+
+    List<User> findAll();
 }

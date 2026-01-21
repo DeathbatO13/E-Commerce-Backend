@@ -1,5 +1,8 @@
 package com.e_commerce.auth_service.domain.model;
 
+import lombok.Setter;
+
+import java.util.Collections;
 import java.util.Set;
 import java.util.UUID;
 
@@ -13,7 +16,8 @@ public class User {
     private final String email;
     private final String password;
     private final String fullname;
-    private final Set<Role> roles;
+    @Setter
+    private Set<Role> roles;
     private final boolean enabled;
 
     public User(UUID id, String email, String password,String fullname, Set<Role> roles, boolean enabled){
@@ -48,4 +52,5 @@ public class User {
     public boolean isEnabled() {
         return enabled;
     }
+
 }

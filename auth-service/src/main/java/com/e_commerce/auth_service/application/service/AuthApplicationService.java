@@ -2,6 +2,8 @@ package com.e_commerce.auth_service.application.service;
 
 import com.e_commerce.auth_service.domain.model.Role;
 import com.e_commerce.auth_service.domain.model.User;
+import com.e_commerce.auth_service.domain.port.in.ChangeUserRoleUseCase;
+import com.e_commerce.auth_service.domain.port.in.ListUsersUseCase;
 import com.e_commerce.auth_service.domain.port.in.LoginUseCase;
 import com.e_commerce.auth_service.domain.port.in.RegisterUserUseCase;
 import com.e_commerce.auth_service.domain.port.out.PasswordEncoderPort;
@@ -10,6 +12,7 @@ import com.e_commerce.auth_service.domain.port.out.UserRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
@@ -26,7 +29,8 @@ import java.util.UUID;
  */
 @Service
 @Transactional
-public class AuthApplicationService implements LoginUseCase, RegisterUserUseCase{
+public class AuthApplicationService implements LoginUseCase,
+        RegisterUserUseCase, ListUsersUseCase, ChangeUserRoleUseCase {
 
     UserRepository userRepository;
     PasswordEncoderPort passwordEncoder;
@@ -95,4 +99,27 @@ public class AuthApplicationService implements LoginUseCase, RegisterUserUseCase
 
         return userRepository.save(user);
     }
+
+    @Override
+    public List<User> listUsers() {
+        return userRepository.findAll();
+    }
+
+
+    @Override
+    public void changeUserRole(UUID userId, String role) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        Role newRole;
+        try {
+            newRole = Role.valueOf(role);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Invalid role");
+        }
+
+        user.setRoles(Set.of(newRole));
+        userRepository.save(user);
+    }
 }
+
