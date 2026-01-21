@@ -1,11 +1,15 @@
 package com.e_commerce.auth_service.adapter.out.persistence;
 
 
+import com.e_commerce.auth_service.adapter.in.rest.UserController;
 import com.e_commerce.auth_service.domain.model.User;
 import com.e_commerce.auth_service.domain.port.out.UserRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 /**
  * Adaptador de salida (output adapter) que implementa el puerto {@link UserRepository}.
@@ -65,5 +69,29 @@ public class UserRepositoryAdapter implements UserRepository {
         return UserMapper.toDomain(
                 jpaRepository.save(UserMapper.toEntity(user))
         );
+    }
+
+    /**
+     *
+     * Busca a un usuario especifico por id
+     *
+     * @param id El id único del usuario
+     * @return
+     */
+    @Override
+    public Optional<User> findById(UUID id) {
+        return jpaRepository.findById(id).map(UserMapper::toDomain);
+    }
+
+    /**
+     *
+     * @return
+     */
+    @Override
+    public List<User> findAll() {
+        return jpaRepository.findAll()
+                .stream()
+                .map(UserMapper::toDomain)
+                .toList();
     }
 }
