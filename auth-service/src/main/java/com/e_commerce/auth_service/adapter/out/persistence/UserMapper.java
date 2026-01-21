@@ -1,5 +1,6 @@
 package com.e_commerce.auth_service.adapter.out.persistence;
 
+import com.e_commerce.auth_service.adapter.in.rest.dto.UserResponse;
 import com.e_commerce.auth_service.domain.model.User;
 import com.e_commerce.auth_service.domain.model.Role;
 
