@@ -8,7 +8,7 @@ datasource:
   jpa:
     open-in-view: false
     hibernate:
-      ddl-auto: validate
+      ddl-auto: update
   flyway:
     enabled: true
 
