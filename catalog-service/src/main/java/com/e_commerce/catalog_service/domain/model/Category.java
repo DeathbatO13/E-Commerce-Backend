@@ -1,10 +1,13 @@
 package com.e_commerce.catalog_service.domain.model;
 
+import lombok.Setter;
+
 import java.util.UUID;
 
 public class Category{
 
     private UUID id;
+    @Setter
     private String name;
     private boolean active;
 

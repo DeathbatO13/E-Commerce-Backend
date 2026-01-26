@@ -4,13 +4,14 @@ import com.e_commerce.catalog_service.domain.model.Category;
 import com.e_commerce.catalog_service.domain.port.in.CreateCategoryUseCase;
 import com.e_commerce.catalog_service.domain.port.in.DeleteCategoryUseCase;
 import com.e_commerce.catalog_service.domain.port.in.ListCategoriesUseCase;
+import com.e_commerce.catalog_service.domain.port.in.UpdateCategoryUseCase;
 import com.e_commerce.catalog_service.domain.port.out.CategoryRepository;
 
 import java.util.List;
 import java.util.UUID;
 
 public class CategoryApplicationService implements CreateCategoryUseCase,
-        ListCategoriesUseCase, DeleteCategoryUseCase {
+        ListCategoriesUseCase, UpdateCategoryUseCase ,DeleteCategoryUseCase {
 
     private final CategoryRepository categoryRepository;
 
@@ -19,26 +20,27 @@ public class CategoryApplicationService implements CreateCategoryUseCase,
     }
 
     @Override
-    public Category create(Category category) {
-        return categoryRepository.save(category);
+    public Category create(String name) {
+        return categoryRepository.save(
+                new Category(UUID.randomUUID(), name, true));
     }
 
     @Override
     public void deleteById(UUID categoryId) {
-        Category category = categoryRepository.findById(categoryId)
-                .orElseThrow(()->new IllegalArgumentException("Category not found"));
-
-        Category disabled = new Category(
-                category.getId(),
-                category.getName(),
-                category.isActive()
-        );
-
-        categoryRepository.save(disabled);
+        categoryRepository.deactivate(categoryId);
     }
 
     @Override
     public List<Category> listAll() {
         return categoryRepository.findAll();
+    }
+
+    @Override
+    public Category update(UUID uuid, String name) {
+        Category category = categoryRepository.findById(uuid)
+                .orElseThrow(() -> new IllegalArgumentException("Category not found"));
+
+        category.setName(name);
+        return categoryRepository.save(category);
     }
 }
