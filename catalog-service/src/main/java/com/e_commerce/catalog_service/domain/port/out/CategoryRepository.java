@@ -13,4 +13,10 @@ public interface CategoryRepository {
     List<Category> findAll();
 
     Optional<Category> findById(UUID id);
+
+    Optional<Category> findByName(String name);
+
+    void deactivate(UUID id);
+
 }
+

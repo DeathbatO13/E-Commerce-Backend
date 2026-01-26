@@ -1,10 +1,7 @@
 package com.e_commerce.catalog_service.adapter.out.persistence.entity;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.math.BigDecimal;
 import java.util.UUID;
@@ -12,6 +9,7 @@ import java.util.UUID;
 @Entity
 @Table(name = "products")
 @Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -22,7 +20,7 @@ public class ProductJpaEntity{
     private UUID id;
 
     @Column(nullable = false)
-    private String nombre;
+    private String name;
 
     @Column
     private String description;

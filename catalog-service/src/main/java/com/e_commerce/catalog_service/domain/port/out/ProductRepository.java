@@ -14,5 +14,11 @@ public interface ProductRepository {
 
     List<Product> findAll();
 
-    List<Product> findByNameContaining(String name);
+    List<Product> findByName(String name);
+
+    List<Product> findByCategory(UUID categoryId);
+
+    void deactivate(UUID id);
+
+    boolean existsByCategory(UUID categoryId);
 }

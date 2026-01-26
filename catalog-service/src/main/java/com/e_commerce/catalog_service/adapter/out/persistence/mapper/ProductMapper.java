@@ -1,32 +1,28 @@
 package com.e_commerce.catalog_service.adapter.out.persistence.mapper;
-
-import com.e_commerce.catalog_service.adapter.out.persistence.entity.CategoryJpaEntity;
 import com.e_commerce.catalog_service.adapter.out.persistence.entity.ProductJpaEntity;
-import com.e_commerce.catalog_service.domain.model.Category;
 import com.e_commerce.catalog_service.domain.model.Product;
 
 public class ProductMapper {
 
-    public static ProductJpaEntity toEntity(Product product, CategoryJpaEntity categoryJpaEntity){
-        return new ProductJpaEntity(
-                product.getId(),
-                product.getName(),
-                product.getDescription(),
-                product.getPrice(),
-                product.getStock(),
-                categoryJpaEntity,
-                product.isActive()
-        );
+    public static ProductJpaEntity toEntity(Product product) {
+        ProductJpaEntity entity = new ProductJpaEntity();
+        entity.setId(product.getId());
+        entity.setName(product.getName());
+        entity.setDescription(product.getDescription());
+        entity.setPrice(product.getPrice());
+        entity.setStock(product.getStock());
+        entity.setActive(product.isActive());
+        return entity;
     }
 
-    public static Product toDomain(ProductJpaEntity entity, Category category){
+    public static Product toDomain(ProductJpaEntity entity) {
         return new Product(
                 entity.getId(),
-                entity.getNombre(),
+                entity.getName(),
                 entity.getDescription(),
                 entity.getPrice(),
                 entity.getStock(),
-                category,
+                null,
                 entity.isActive()
         );
     }

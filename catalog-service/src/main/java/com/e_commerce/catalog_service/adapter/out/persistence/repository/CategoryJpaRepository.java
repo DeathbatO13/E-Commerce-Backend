@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-public interface CategoryJpaRepository extends JpaRepository<CategoryJpaRepository, UUID>{
+public interface CategoryJpaRepository extends JpaRepository<CategoryJpaEntity, UUID>{
 
     Optional<CategoryJpaEntity> findByNameAndActiveTrue(String name);
 
