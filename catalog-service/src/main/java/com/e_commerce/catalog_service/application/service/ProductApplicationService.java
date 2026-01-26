@@ -38,7 +38,7 @@ public class ProductApplicationService implements
 
     @Override
     public List<Product> searchByName(String name) {
-        return productRepository.findByNameContaining(name);
+        return productRepository.findByName(name);
     }
 
     @Override
