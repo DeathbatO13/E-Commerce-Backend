@@ -11,6 +11,8 @@ public class Category{
     private String name;
     private boolean active;
 
+    public Category(){}
+
     public Category(UUID id, String name, boolean active) {
         this.id = id;
         this.name = name;
