@@ -1,16 +1,7 @@
 spring:
   application:
     name: catalog_service
-datasource:
-  url: jdbc:postgresql://localhost:5432/catalog_db
-  username: postgres
-  password: postgresPassword
-  jpa:
-    open-in-view: false
-    hibernate:
-      ddl-auto: update
-  flyway:
-    enabled: true
 
-server:
-  port: 8082
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
