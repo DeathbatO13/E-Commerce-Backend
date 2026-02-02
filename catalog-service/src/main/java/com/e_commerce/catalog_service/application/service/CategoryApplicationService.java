@@ -21,6 +21,9 @@ public class CategoryApplicationService implements CreateCategoryUseCase,
 
     @Override
     public Category create(String name) {
+        if (categoryRepository.findByName(name).isPresent()) {
+            throw new IllegalArgumentException("Category already exists");
+        }
         return categoryRepository.save(
                 new Category(UUID.randomUUID(), name, true));
     }

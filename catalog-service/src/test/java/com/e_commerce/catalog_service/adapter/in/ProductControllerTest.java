@@ -3,7 +3,7 @@ package com.e_commerce.catalog_service.adapter.in;
 import com.e_commerce.catalog_service.adapter.in.rest.ProductController;
 import com.e_commerce.catalog_service.domain.model.Category;
 import com.e_commerce.catalog_service.domain.model.Product;
-import com.e_commerce.catalog_service.domain.port.in.ListProductUseCase;
+import com.e_commerce.catalog_service.domain.port.in.*;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -29,6 +29,18 @@ public class ProductControllerTest {
 
     @MockitoBean
     private ListProductUseCase listProductsUseCase;
+
+    @MockitoBean
+    private CreateProductUseCase createProductUseCase;
+
+    @MockitoBean
+    private GetProductUseCase getProductUseCase;
+
+    @MockitoBean
+    private UpdateProductUseCase updateProductUseCase;
+
+    @MockitoBean
+    private DeleteProductUseCase deleteProductUseCase;
 
     @Test
     void shouldListProductsByName() throws Exception {

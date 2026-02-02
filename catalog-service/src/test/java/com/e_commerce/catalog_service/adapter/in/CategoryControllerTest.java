@@ -50,10 +50,10 @@ public class CategoryControllerTest {
                 .thenReturn(category);
 
         mockMvc.perform(post("/categories")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .contentType("""
-                    { "name": "Books" }
-                """))
+                        .contentType(MediaType.APPLICATION_JSON) // Define el tipo
+                        .content("""
+                        { "name": "Books" }
+                    """)) // Define el CUERPO (Body)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.name").value("Books"))
                 .andExpect(jsonPath("$.active").value(true));
