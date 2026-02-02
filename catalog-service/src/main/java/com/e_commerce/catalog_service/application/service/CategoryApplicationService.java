@@ -6,10 +6,14 @@ import com.e_commerce.catalog_service.domain.port.in.DeleteCategoryUseCase;
 import com.e_commerce.catalog_service.domain.port.in.ListCategoriesUseCase;
 import com.e_commerce.catalog_service.domain.port.in.UpdateCategoryUseCase;
 import com.e_commerce.catalog_service.domain.port.out.CategoryRepository;
+import jakarta.transaction.Transactional;
+import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.UUID;
 
+@Service
+@Transactional
 public class CategoryApplicationService implements CreateCategoryUseCase,
         ListCategoriesUseCase, UpdateCategoryUseCase ,DeleteCategoryUseCase {
 
