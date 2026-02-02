@@ -32,7 +32,7 @@ public class CategoryServiceTest {
                 .thenReturn(Optional.empty());
 
         when(categoryRepository.save(any()))
-                .thenAnswer(inv -> inv.getArguments());
+                .thenAnswer(inv -> inv.getArgument(0));
 
         Category category = service.create("Electronics");
 
@@ -41,7 +41,7 @@ public class CategoryServiceTest {
         assertTrue(category.isActive());
 
 
-        verify(categoryRepository.save(any()));
+        verify(categoryRepository).save(any());
     }
 
     @Test
