@@ -5,11 +5,13 @@ import com.e_commerce.catalog_service.adapter.out.persistence.mapper.CategoryMap
 import com.e_commerce.catalog_service.adapter.out.persistence.repository.CategoryJpaRepository;
 import com.e_commerce.catalog_service.domain.model.Category;
 import com.e_commerce.catalog_service.domain.port.out.CategoryRepository;
+import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+@Component
 public class CategoryAdapter implements CategoryRepository {
 
     private final CategoryJpaRepository categoryJpaRepository;

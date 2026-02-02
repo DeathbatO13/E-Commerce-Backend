@@ -7,11 +7,13 @@ import com.e_commerce.catalog_service.adapter.out.persistence.repository.Categor
 import com.e_commerce.catalog_service.adapter.out.persistence.repository.ProductJpaRepository;
 import com.e_commerce.catalog_service.domain.model.Product;
 import com.e_commerce.catalog_service.domain.port.out.ProductRepository;
+import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+@Component
 public class ProductAdapter implements ProductRepository {
 
     private final ProductJpaRepository productJpaRepository;
