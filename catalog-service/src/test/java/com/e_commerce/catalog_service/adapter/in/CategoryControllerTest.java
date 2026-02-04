@@ -39,7 +39,7 @@ public class CategoryControllerTest {
     private DeleteCategoryUseCase deleteCategoryUseCase;
 
     @Test
-    void shouldCreateCategory() throws Exception {
+    void shouldCreateCategorySuccessfully() throws Exception {
         Category category = new Category(
                 UUID.randomUUID(),
                 "Books",
@@ -58,4 +58,5 @@ public class CategoryControllerTest {
                 .andExpect(jsonPath("$.name").value("Books"))
                 .andExpect(jsonPath("$.active").value(true));
     }
+
 }
