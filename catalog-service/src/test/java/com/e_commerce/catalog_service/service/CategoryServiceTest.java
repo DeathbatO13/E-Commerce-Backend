@@ -10,6 +10,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -54,6 +55,16 @@ public class CategoryServiceTest {
         assertThrows(
                 IllegalArgumentException.class, () -> service.create("Electronics")
         );
+    }
+
+    @Test
+    void shouldDeactivateCategory(){
+        UUID id = UUID.randomUUID();
+        Category category = new Category(id, "Electronics", true);
+
+        service.deleteById(id);
+
+        verify(categoryRepository).deactivate(id);
     }
 
 }

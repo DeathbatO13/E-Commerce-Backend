@@ -24,6 +24,11 @@ public class CategoryAdapter implements CategoryRepository {
 
     @Override
     public Category save(Category category) {
+
+        CategoryJpaEntity categoryJpaEntity = categoryJpaRepository
+                .findByNameAndActiveTrue(category.getName())
+                .orElseThrow(()->new IllegalArgumentException("Category not found"));
+
         CategoryJpaEntity entity = CategoryMapper.toEntity(category);
         return CategoryMapper.toDomain(categoryJpaRepository.save(entity));
     }
