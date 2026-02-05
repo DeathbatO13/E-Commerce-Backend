@@ -13,9 +13,11 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.util.List;
 import java.util.UUID;
 
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -57,6 +59,24 @@ public class CategoryControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.name").value("Books"))
                 .andExpect(jsonPath("$.active").value(true));
+    }
+
+    @Test
+    void shouldListCategoriesSuccessfully() throws Exception {
+
+        Category category = new Category(
+                UUID.randomUUID(),
+                "Books",
+                true
+        );
+
+        when(listCategoriesUseCase.listAll())
+                .thenReturn(List.of(category));
+
+        mockMvc.perform(get("/categories").param("name", "Books"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].name").value("Books"))
+                .andExpect(jsonPath("$[0].active").value(true));;
     }
 
 }

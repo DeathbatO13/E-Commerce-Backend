@@ -1,5 +1,6 @@
 package com.e_commerce.catalog_service.adapter.out.persistence.mapper;
 import com.e_commerce.catalog_service.adapter.out.persistence.entity.ProductJpaEntity;
+import com.e_commerce.catalog_service.domain.model.Category;
 import com.e_commerce.catalog_service.domain.model.Product;
 
 public class ProductMapper {
@@ -16,14 +17,27 @@ public class ProductMapper {
     }
 
     public static Product toDomain(ProductJpaEntity entity) {
+
+        if (entity == null) return null;
+
+        Category domainCategory = null;
+        if (entity.getCategory() != null) {
+            domainCategory = new Category(
+                    entity.getCategory().getId(),
+                    entity.getCategory().getName(),
+                    entity.getCategory().isActive()
+            );
+        }
+
         return new Product(
                 entity.getId(),
                 entity.getName(),
                 entity.getDescription(),
                 entity.getPrice(),
                 entity.getStock(),
-                null,
+                domainCategory,
                 entity.isActive()
+
         );
     }
 }
