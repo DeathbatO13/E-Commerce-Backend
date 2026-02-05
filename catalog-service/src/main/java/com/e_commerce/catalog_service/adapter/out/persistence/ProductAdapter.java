@@ -27,11 +27,20 @@ public class ProductAdapter implements ProductRepository {
     @Override
     public Product save(Product product) {
 
+        //Only for Test
+        /*
         CategoryJpaEntity categoryJpaEntity = categoryJpaRepository
                 .findById(product.getId())
-                .orElseThrow(()->new IllegalArgumentException("Category not found"));
+                .orElseThrow(()->new IllegalArgumentException("Category not found"));*/
+
+
+        CategoryJpaEntity categoryEntity = categoryJpaRepository.findById(product.getCategory().getId())
+                .orElseThrow(() -> new IllegalArgumentException("Category not found with ID: " + product.getCategory().getId()));
 
         ProductJpaEntity entity = ProductMapper.toEntity(product);
+
+        entity.setCategory(categoryEntity);
+
         return ProductMapper.toDomain(productJpaRepository.save(entity));
     }
 

@@ -7,6 +7,7 @@ import com.e_commerce.catalog_service.domain.port.in.*;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -16,6 +17,7 @@ import java.util.UUID;
 
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -41,6 +43,33 @@ public class ProductControllerTest {
 
     @MockitoBean
     private DeleteProductUseCase deleteProductUseCase;
+
+/*
+    @Test
+    void shouldCreateProductSuccessfully() throws Exception{
+
+        Product product = new Product(
+                UUID.randomUUID(),
+                "Laptop",
+                "Gaming Laptop",
+                BigDecimal.valueOf(1600),
+                10,
+                new Category(UUID.randomUUID(), "Tech", true),
+                true
+        );
+
+        when(createProductUseCase.create(product))
+                .thenReturn(product);
+
+        mockMvc.perform(post("/products")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        [
+                        {"name": "Laptop"}
+                        ]
+                        """))
+    }*/
+
 
     @Test
     void shouldListProductsByName() throws Exception {
