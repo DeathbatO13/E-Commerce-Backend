@@ -15,6 +15,7 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -44,7 +45,7 @@ public class ProductControllerTest {
     @MockitoBean
     private DeleteProductUseCase deleteProductUseCase;
 
-/*
+
     @Test
     void shouldCreateProductSuccessfully() throws Exception{
 
@@ -58,17 +59,25 @@ public class ProductControllerTest {
                 true
         );
 
-        when(createProductUseCase.create(product))
+        when(createProductUseCase.create(any(Product.class)))
                 .thenReturn(product);
 
         mockMvc.perform(post("/products")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
-                        [
-                        {"name": "Laptop"}
-                        ]
+                        {
+                        "name": "Laptop",
+                        "description": "Gaming Laptop",
+                        "price": 1600,
+                        "stock": 10
+                        }
+                        
                         """))
-    }*/
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Laptop"))
+                .andExpect(jsonPath("$.price").value(1600))
+                .andExpect(jsonPath("$.active").value(true));
+    }
 
 
     @Test
