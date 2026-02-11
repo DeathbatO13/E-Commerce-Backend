@@ -6,6 +6,14 @@ import lombok.*;
 import java.math.BigDecimal;
 import java.util.UUID;
 
+
+/**
+ * Entidad JPA que representa la tabla de productos en la base de datos.
+ * <p>
+ * Mapea los atributos del producto y su relación con la categoría.
+ * Utilizada exclusivamente por la capa de persistencia.
+ * </p>
+ */
 @Entity
 @Table(name = "products")
 @Getter

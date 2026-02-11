@@ -1,6 +1,5 @@
 package com.e_commerce.catalog_service.adapter.in.rest;
 
-
 import com.e_commerce.catalog_service.adapter.in.rest.dto.request.CreateProductRequest;
 import com.e_commerce.catalog_service.adapter.in.rest.dto.request.UpdateProductRequest;
 import com.e_commerce.catalog_service.adapter.in.rest.dto.response.ProductResponse;
@@ -12,6 +11,13 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * Controlador REST que expone los endpoints para la gestión de productos.
+ * <p>
+ * Implementa las operaciones CRUD del catálogo de productos mediante los casos de uso definidos
+ * en el dominio, transformando las solicitudes y respuestas entre DTOs y modelos de dominio.
+ * </p>
+ */
 @RestController
 @RequestMapping("/products")
 public class ProductController {
@@ -21,7 +27,6 @@ public class ProductController {
     private final GetProductUseCase getProductUseCase;
     private final UpdateProductUseCase updateProductUseCase;
     private final DeleteProductUseCase deleteProductUseCase;
-
 
     public ProductController(
             CreateProductUseCase createProductUseCase,
@@ -36,6 +41,12 @@ public class ProductController {
         this.deleteProductUseCase = deleteProductUseCase;
     }
 
+    /**
+     * Convierte un modelo de dominio Product a su representación en respuesta REST.
+     *
+     * @param product producto del dominio
+     * @return DTO de respuesta para el cliente
+     */
     private ProductResponse toResponse(Product product) {
         return new ProductResponse(
                 product.getId(),
@@ -48,9 +59,14 @@ public class ProductController {
         );
     }
 
-
+    /**
+     * Crea un nuevo producto en el catálogo.
+     *
+     * @param request DTO con los datos del producto a crear
+     * @return respuesta con los datos del producto creado
+     */
     @PostMapping
-    public ProductResponse create(@RequestBody CreateProductRequest request){
+    public ProductResponse create(@RequestBody CreateProductRequest request) {
         var product = createProductUseCase.create(
                 new Product(
                         UUID.randomUUID(),
@@ -66,7 +82,18 @@ public class ProductController {
         return toResponse(product);
     }
 
-
+    /**
+     * Lista productos con filtros opcionales por categoría o nombre.
+     * <p>
+     * Si se proporciona categoryId, filtra por categoría.<br>
+     * Si se proporciona name, filtra por nombre.<br>
+     * Si no se proporciona ninguno, retorna todos los productos.
+     * </p>
+     *
+     * @param categoryId (opcional) identificador de categoría
+     * @param name (opcional) texto de búsqueda por nombre
+     * @return lista de productos en formato de respuesta
+     */
     @GetMapping
     public List<ProductResponse> list(
             @RequestParam(required = false) UUID categoryId,
@@ -80,13 +107,24 @@ public class ProductController {
         return products.stream().map(this::toResponse).toList();
     }
 
-
+    /**
+     * Obtiene los detalles de un producto por su identificador.
+     *
+     * @param id identificador único del producto
+     * @return respuesta con los datos del producto
+     */
     @GetMapping("/{id}")
     public ProductResponse get(@PathVariable UUID id) {
         return toResponse(getProductUseCase.getById(id));
     }
 
-
+    /**
+     * Actualiza los datos de un producto existente.
+     *
+     * @param id identificador del producto a actualizar
+     * @param request DTO con los datos actualizados
+     * @return respuesta con el producto actualizado
+     */
     @PutMapping("/{id}")
     public ProductResponse update(
             @PathVariable UUID id,
@@ -107,11 +145,13 @@ public class ProductController {
         return toResponse(product);
     }
 
-
+    /**
+     * Elimina (desactiva lógicamente) un producto por su identificador.
+     *
+     * @param id identificador del producto a eliminar
+     */
     @DeleteMapping("/{id}")
     public void delete(@PathVariable UUID id) {
         deleteProductUseCase.deleteById(id);
     }
-
-
 }

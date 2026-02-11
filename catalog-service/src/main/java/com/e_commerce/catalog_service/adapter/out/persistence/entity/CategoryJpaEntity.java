@@ -7,6 +7,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+
+/**
+ * Entidad JPA que representa la tabla de categorías en la base de datos.
+ * <p>
+ * Mapea los atributos de la categoría y su relación uno-a-muchos con los productos.
+ * Utilizada exclusivamente por la capa de persistencia.
+ * </p>
+ */
 @Entity
 @Table(name = "categories")
 @Getter

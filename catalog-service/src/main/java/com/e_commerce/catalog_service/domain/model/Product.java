@@ -3,6 +3,14 @@ package com.e_commerce.catalog_service.domain.model;
 import java.math.BigDecimal;
 import java.util.UUID;
 
+/**
+ * Entidad del dominio que representa un producto dentro del catálogo del e-commerce.
+ * <p>
+ * Contiene la información esencial de un producto: identificación, nombre, descripción,
+ * precio, stock disponible, categoría a la que pertenece y su estado de activación.
+ * </p>
+ */
+
 public class Product {
 
     private UUID id;
