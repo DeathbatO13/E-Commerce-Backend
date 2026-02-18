@@ -1,0 +1,71 @@
+package com.e_commerce.cart_service.application.service;
+
+import com.e_commerce.cart_service.domain.model.Cart;
+import com.e_commerce.cart_service.domain.port.in.*;
+import com.e_commerce.cart_service.domain.port.out.CartRepository;
+
+import java.math.BigDecimal;
+import java.util.UUID;
+
+public class CartApplicationService implements
+        AddProductCartUseCase, RemoveProductFromCartUseCase,
+        UpdateCartItemQuantityUseCase, GetCartUseCase, ClearCartUseCase{
+
+    private final CartRepository cartRepository;
+
+    public CartApplicationService(CartRepository cartRepository) {
+        this.cartRepository = cartRepository;
+    }
+
+    @Override
+    public void addProduct(UUID userId, UUID productId, BigDecimal price, int quantity) {
+
+        Cart cart = cartRepository.findByUserId(userId)
+                .orElseGet(() -> Cart.create(userId));
+
+        cart.addProduct(productId, price, quantity);
+
+        cartRepository.save(cart);
+    }
+
+    @Override
+    public void clearCart(UUID userId) {
+
+        Cart cart = cartRepository.findByUserId(userId)
+                .orElseThrow(() -> new IllegalArgumentException("Cart not found"));
+
+        cart.clear();
+
+        cartRepository.save(cart);
+    }
+
+    @Override
+    public Cart getCart(UUID userId) {
+
+        return cartRepository.findByUserId(userId)
+                .orElseGet(() -> new Cart(userId));
+    }
+
+    @Override
+    public void removeProduct(UUID userId, UUID productId) {
+
+        Cart cart = cartRepository.findByUserId(userId)
+                .orElseThrow(() -> new IllegalArgumentException("Cart not found"));
+
+        cart.removeProduct(productId);
+
+        cartRepository.save(cart);
+
+    }
+
+    @Override
+    public void updateQuantity(UUID userId, UUID productId, int quantity) {
+
+        Cart cart = cartRepository.findByUserId(userId)
+                .orElseThrow(() -> new IllegalArgumentException("Cart not found"));
+
+        cart.updateQuantity(productId, quantity);
+
+        cartRepository.save(cart);
+    }
+}

@@ -1,16 +1,13 @@
 package com.e_commerce.cart_service.domain.model;
 
 import java.math.BigDecimal;
-import java.util.List;
-import java.util.NoSuchElementException;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 
 public class Cart{
 
     private final UUID id;
     private final UUID userId;
-    private final List<CartItem> items;
+    private List<CartItem> items;
     private BigDecimal totalPrice;
 
 
@@ -19,6 +16,13 @@ public class Cart{
         this.id = id;
         this.userId = userId;
         this.items = items;
+    }
+
+    public Cart(UUID userId) {
+        this.id = UUID.randomUUID();
+        this.userId = userId;
+        this.items = new ArrayList<>();
+        this.totalPrice = BigDecimal.ZERO;
     }
 
     public UUID getId() {
@@ -85,6 +89,16 @@ public class Cart{
 
         items.removeIf(item -> item.getProductId().equals(productId));
         recalculateTotal();
+    }
+
+    public static Cart create(UUID userId) {
+        return new Cart(userId);
+    }
+
+
+    public void clear(){
+        this.items.clear();
+        this.totalPrice = BigDecimal.ZERO;
     }
 
 }
