@@ -1,9 +1,11 @@
 package com.e_commerce.cart_service.domain.port.in;
 
+import com.e_commerce.cart_service.domain.model.Cart;
+
 import java.math.BigDecimal;
 import java.util.UUID;
 
 public interface AddProductCartUseCase{
 
-    void addProduct(UUID userId, UUID productId, BigDecimal price, int quantity);
+    Cart addProduct(UUID userId, UUID productId, BigDecimal price, int quantity);
 }

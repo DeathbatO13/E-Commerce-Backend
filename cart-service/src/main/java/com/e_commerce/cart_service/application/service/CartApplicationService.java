@@ -18,7 +18,7 @@ public class CartApplicationService implements
     }
 
     @Override
-    public void addProduct(UUID userId, UUID productId, BigDecimal price, int quantity) {
+    public Cart addProduct(UUID userId, UUID productId, BigDecimal price, int quantity) {
 
         Cart cart = cartRepository.findByUserId(userId)
                 .orElseGet(() -> Cart.create(userId));
@@ -26,6 +26,7 @@ public class CartApplicationService implements
         cart.addProduct(productId, price, quantity);
 
         cartRepository.save(cart);
+        return cart;
     }
 
     @Override
@@ -59,7 +60,7 @@ public class CartApplicationService implements
     }
 
     @Override
-    public void updateQuantity(UUID userId, UUID productId, int quantity) {
+    public Cart updateQuantity(UUID userId, UUID productId, int quantity) {
 
         Cart cart = cartRepository.findByUserId(userId)
                 .orElseThrow(() -> new IllegalArgumentException("Cart not found"));
@@ -67,5 +68,6 @@ public class CartApplicationService implements
         cart.updateQuantity(productId, quantity);
 
         cartRepository.save(cart);
+        return cart;
     }
 }
