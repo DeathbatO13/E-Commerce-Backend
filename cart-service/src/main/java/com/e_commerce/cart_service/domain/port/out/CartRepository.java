@@ -11,5 +11,7 @@ public interface CartRepository {
 
     Optional<Cart> findByUserId(UUID userId);
 
+    Optional<Cart> findById(UUID id);
+
     void deleteByUserId(UUID userId);
 }
