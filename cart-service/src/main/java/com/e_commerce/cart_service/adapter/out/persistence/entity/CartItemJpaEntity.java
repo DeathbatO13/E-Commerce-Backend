@@ -7,9 +7,10 @@ import lombok.Getter;
 import java.math.BigDecimal;
 import java.util.UUID;
 
-@Getter
+
 @Entity
 @Table(name = "cart_items")
+@Getter
 public class CartItemJpaEntity{
 
     @Id

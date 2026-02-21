@@ -9,10 +9,11 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
-@Getter
-@AllArgsConstructor
+
 @Entity
 @Table(name = "carts")
+@Getter
+@AllArgsConstructor
 public class CartJpaEntity{
 
     @Id
