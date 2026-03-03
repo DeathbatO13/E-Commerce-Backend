@@ -3,6 +3,7 @@ package com.e_commerce.cart_service.application.service;
 import com.e_commerce.cart_service.domain.model.Cart;
 import com.e_commerce.cart_service.domain.port.in.*;
 import com.e_commerce.cart_service.domain.port.out.CartRepository;
+import com.e_commerce.cart_service.domain.port.out.CatalogPort;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -14,6 +15,7 @@ public class CartApplicationService implements
         UpdateCartItemQuantityUseCase, GetCartUseCase, ClearCartUseCase{
 
     private final CartRepository cartRepository;
+    CatalogPort catalogPort;
 
     public CartApplicationService(CartRepository cartRepository) {
         this.cartRepository = cartRepository;
