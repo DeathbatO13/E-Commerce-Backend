@@ -3,10 +3,12 @@ package com.e_commerce.cart_service.application.service;
 import com.e_commerce.cart_service.domain.model.Cart;
 import com.e_commerce.cart_service.domain.port.in.*;
 import com.e_commerce.cart_service.domain.port.out.CartRepository;
+import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.util.UUID;
 
+@Service
 public class CartApplicationService implements
         AddProductCartUseCase, RemoveProductFromCartUseCase,
         UpdateCartItemQuantityUseCase, GetCartUseCase, ClearCartUseCase{
@@ -18,15 +20,16 @@ public class CartApplicationService implements
     }
 
     @Override
-    public Cart addProduct(UUID userId, UUID productId, BigDecimal price, int quantity) {
+    public Cart addProduct(UUID userId, UUID productId, int quantity) {
 
         Cart cart = cartRepository.findByUserId(userId)
                 .orElseGet(() -> Cart.create(userId));
 
+        BigDecimal price = catalogPort.getPrice(productId);
+
         cart.addProduct(productId, price, quantity);
 
-        cartRepository.save(cart);
-        return cart;
+        return cartRepository.save(cart);
     }
 
     @Override
