@@ -13,4 +13,7 @@ public interface OrderRepositoryPort {
     Optional<Order> findById(UUID id);
 
     List<Order> findAll();
+
+    List<Order> findByUserId(UUID userId);
+
 }
