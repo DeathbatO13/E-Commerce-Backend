@@ -1,3 +1,17 @@
+server:
+  port: 8084
+
 spring:
   application:
     name: order-service
+
+  profiles:
+    active: dev
+
+  jackson:
+    serialization:
+      WRITE_DATES_AS_TIMESTAMPS: false
+
+logging:
+  level:
+    root: INFO
