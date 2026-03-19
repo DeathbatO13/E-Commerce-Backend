@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.UUID;
 
 public record CartResponse(
+        UUID id,
         UUID userId,
         List<CartItemResponse> item,
         BigDecimal total
