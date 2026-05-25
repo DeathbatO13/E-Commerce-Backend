@@ -20,7 +20,7 @@ public class OrderService implements CreateOrderUseCase, GetOrderUseCase {
     }
 
     @Override
-    public static UUID createOrder(UUID userId, String address, List<OrderItem> items, BigDecimal total) {
+    public UUID createOrder(UUID userId, String address, List<OrderItem> items, BigDecimal total) {
 
         Order order = new Order(
                 userId,
