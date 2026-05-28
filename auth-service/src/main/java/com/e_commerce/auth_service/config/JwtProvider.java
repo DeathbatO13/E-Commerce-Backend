@@ -89,4 +89,25 @@ public class JwtProvider{
                 .getBody();
     }
 
+    /**
+     * Valida si el token JWT es correcto, no ha sido manipulado y no ha expirado.
+     * @param token El string del JWT (sin el prefijo "Bearer ")
+     * @return true si es válido, false en cualquier otro caso
+     */
+    public boolean validateToken(String token) {
+        try {
+            // Si el token expiró, la firma es incorrecta o está mal formado, lanzará una excepción.
+            this.getClaims(token);
+            return true;
+        } catch (io.jsonwebtoken.ExpiredJwtException e) {
+            System.err.println("El token JWT ha expirado: " + e.getMessage());
+        } catch (io.jsonwebtoken.security.SignatureException e) {
+            System.err.println("Firma del JWT inválida: " + e.getMessage());
+        } catch (io.jsonwebtoken.MalformedJwtException e) {
+            System.err.println("Token JWT mal formado: " + e.getMessage());
+        } catch (Exception e) {
+            System.err.println("Error al validar el token JWT: " + e.getMessage());
+        }
+        return false;
+    }
 }
