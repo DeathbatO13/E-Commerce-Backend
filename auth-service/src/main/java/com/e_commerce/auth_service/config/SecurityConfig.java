@@ -65,7 +65,7 @@ public class SecurityConfig {
                         .requestMatchers("/auth/**", "/swagger-ui/**", "/v3/api-docs/**")
                         .permitAll()
                         .requestMatchers("/admin/**", "/swagger-ui/**", "/v3/api-docs/**")
-                        .permitAll().anyRequest().authenticated()
+                        .hasRole("SUPER_ADMIN").anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
