@@ -1,11 +1,11 @@
-server:
+/server:
   port: 8081
 
 spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/auth_db
     username: postgres
-    password: postgresPassword
+    password: postgres
   jpa:
     open-in-view: false
     hibernate:
