@@ -110,4 +110,13 @@ public class JwtProvider{
         }
         return false;
     }
+
+
+    public long extractUserId(String token){
+        return getClaims(token).get("userId", Long.class);
+    }
+
+    public String extractEmail(String token){
+        return getClaims(token).getSubject();
+    }
 }
