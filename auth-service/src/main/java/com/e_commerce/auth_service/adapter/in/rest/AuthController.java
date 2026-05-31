@@ -81,6 +81,6 @@ public class AuthController{
                 request.password()
         );
 
-        return new LoginResponse(token);
+        return new LoginResponse(token, "Bearer", 3600);
     }
 }
