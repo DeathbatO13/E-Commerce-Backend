@@ -56,8 +56,8 @@ public class JwtProvider{
      */
     public String generarToken(User user){
         return Jwts.builder()
-                .setSubject(user.getId().toString())
-                .claim("email", user.getEmail())
+                .setSubject(user.getEmail())
+                .claim("userId", user.getId())
                 .claim("roles", user.getRoles()
                         .stream()
                         .map(Enum::name)
