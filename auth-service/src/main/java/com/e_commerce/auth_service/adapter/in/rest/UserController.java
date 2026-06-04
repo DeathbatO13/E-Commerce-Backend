@@ -12,7 +12,7 @@ import java.util.UUID;
 
 
 @RestController
-//@PreAuthorize("hasRole('SUPER_ADMIN')")
+@PreAuthorize("hasRole('SUPER_ADMIN')")
 @RequestMapping("/admin")
 public class UserController{
 
