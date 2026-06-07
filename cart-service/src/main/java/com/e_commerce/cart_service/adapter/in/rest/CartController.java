@@ -7,7 +7,7 @@ import com.e_commerce.cart_service.adapter.in.rest.dto.response.CartResponse;
 import com.e_commerce.cart_service.adapter.in.rest.mapper.CartRestMapper;
 import com.e_commerce.cart_service.domain.model.Cart;
 import com.e_commerce.cart_service.domain.port.in.*;
-import org.apache.tomcat.util.net.openssl.ciphers.Authentication;
+import org.springframework.security.core.Authentication;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
@@ -39,7 +39,7 @@ public class CartController {
 
     private UUID extractUserId(Authentication authentication) {
 
-        return UUID.fromString(authentication.name());
+        return UUID.fromString(authentication.getName());
     }
 
 

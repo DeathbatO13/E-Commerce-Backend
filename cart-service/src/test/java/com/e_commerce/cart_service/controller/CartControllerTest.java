@@ -87,7 +87,7 @@ public class CartControllerTest {
         verify(addProductCartUseCase).addProduct(
                 eq(userId),
                 eq(productId),
-                eq(2)
+                request.price(), eq(2)
         );
     }
 
@@ -114,7 +114,7 @@ public class CartControllerTest {
         verify(addProductCartUseCase).addProduct(
                 eq(userId),
                 eq(productId),
-                eq(2)
+                request.price(), eq(2)
         );
     }
 

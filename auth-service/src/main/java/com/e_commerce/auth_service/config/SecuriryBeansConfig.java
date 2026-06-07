@@ -15,7 +15,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
  * </ul>
  * </p>
  * <p>
- * Este bean es inyectado automáticamente en componentes que implementan {@link PasswordEncoderPort}
+ * Este bean es inyectado automáticamente en componentes que implementan
  * (como {@code BCryptPasswordEncoderAdapter}) o en cualquier lugar donde Spring Security
  * necesite codificar/verificar contraseñas.
  * </p>
