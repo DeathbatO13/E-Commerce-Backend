@@ -22,13 +22,12 @@ public class CartApplicationService implements
     }
 
     @Override
-    public Cart addProduct(UUID userId, UUID productId, int quantity) {
+    public Cart addProduct(UUID userId, UUID productId, BigDecimal price, int quantity) {
 
         Cart cart = cartRepository.findByUserId(userId)
                 .orElseGet(() -> Cart.create(userId));
 
-        BigDecimal price = catalogPort.getPrice(productId);
-
+        price = catalogPort.getPrice(productId);
         cart.addProduct(productId, price, quantity);
 
         return cartRepository.save(cart);
