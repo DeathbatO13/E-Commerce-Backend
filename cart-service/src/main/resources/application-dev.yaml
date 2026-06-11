@@ -11,3 +11,7 @@ spring:
 
   flyway:
     enabled: true
+
+  security:
+    jwt:
+      secret: very-secret-key-very-secret-key-very-secret
