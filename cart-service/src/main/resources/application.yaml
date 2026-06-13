@@ -13,4 +13,4 @@ server:
 
 security:
   jwt:
-    secret: very-secret-key-very-secret-key-very-secret
+    secret: super-secret-key-super-secret-key
