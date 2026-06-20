@@ -19,6 +19,7 @@ public class CartRestMapper{
                 .toList();
 
         return new CartResponse(
+                cart.getId(),
                 cart.getUserId(),
                 items,
                 cart.getTotalPrice()
