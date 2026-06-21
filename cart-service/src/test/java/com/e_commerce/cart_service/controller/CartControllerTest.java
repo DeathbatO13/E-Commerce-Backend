@@ -1,6 +1,7 @@
 package com.e_commerce.cart_service.controller;
 
 import com.e_commerce.cart_service.adapter.in.rest.CartController;
+import com.e_commerce.cart_service.adapter.in.rest.dto.request.AddItemRequest;
 import com.e_commerce.cart_service.domain.model.Cart;
 import com.e_commerce.cart_service.domain.port.in.*;
 import org.junit.jupiter.api.Test;
@@ -41,6 +42,9 @@ public class CartControllerTest {
 
     @MockitoBean
     private RemoveProductFromCartUseCase removeProductFromCartUseCase;
+
+    @MockitoBean
+    private AddItemRequest request;
 
 
     @Test
@@ -93,7 +97,7 @@ public class CartControllerTest {
 
 
     @Test
-    void shouldAddProductToCart() throws Exception {
+    void shouldUpdateProductToCart() throws Exception {
 
         UUID userId = UUID.randomUUID();
         UUID productId = UUID.randomUUID();
