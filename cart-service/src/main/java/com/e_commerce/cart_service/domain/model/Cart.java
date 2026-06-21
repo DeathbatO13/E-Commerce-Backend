@@ -1,13 +1,25 @@
 package com.e_commerce.cart_service.domain.model;
 
+import jakarta.persistence.*;
+
 import java.math.BigDecimal;
 import java.util.*;
 
+
+@Entity
+@Table(name = "carts")
 public class Cart{
 
+    @Id
     private final UUID id;
-    private final UUID userId;
+    @OneToMany(
+            mappedBy = "cart",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true
+    )
     private List<CartItem> items;
+    private final UUID userId;
+
     private BigDecimal totalPrice;
 
 
