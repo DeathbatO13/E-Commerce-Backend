@@ -11,12 +11,13 @@ import java.util.UUID;
 public class CartItem {
 
     @Id
-    private final UUID id;
+    private UUID id;
     @ManyToOne
     @JoinColumn(name = "cart_id")
     private Cart cart;
-    private final UUID productId;
-    private final BigDecimal price;
+    private UUID productId;
+    private
+    BigDecimal price;
     private int quantity;
 
     public CartItem(UUID id, UUID productId, BigDecimal price, int quantity) {
@@ -28,6 +29,9 @@ public class CartItem {
         this.productId = productId;
         this.price = price;
         this.quantity = quantity;
+    }
+
+    public CartItem(){
     }
 
     public UUID getId() {

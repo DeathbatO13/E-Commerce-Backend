@@ -8,6 +8,9 @@ spring:
   jpa:
     open-in-view: false
 
+  flyway:
+    enabled: true
+
 server:
   port: 8083
 

@@ -11,14 +11,14 @@ import java.util.*;
 public class Cart{
 
     @Id
-    private final UUID id;
+    private UUID id;
     @OneToMany(
             mappedBy = "cart",
             cascade = CascadeType.ALL,
             orphanRemoval = true
     )
     private List<CartItem> items;
-    private final UUID userId;
+    private UUID userId;
 
     private BigDecimal totalPrice;
 
@@ -36,6 +36,8 @@ public class Cart{
         this.items = new ArrayList<>();
         this.totalPrice = BigDecimal.ZERO;
     }
+
+    public Cart(){}
 
     public UUID getId() {
         return id;
