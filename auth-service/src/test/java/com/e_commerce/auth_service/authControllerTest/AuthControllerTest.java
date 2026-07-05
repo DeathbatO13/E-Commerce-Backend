@@ -117,6 +117,6 @@ public class AuthControllerTest {
                         """)
                 )
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.token").value("fake-token"));
+                .andExpect(jsonPath("$.accessToken").value("fake-token"));
     }
 }
