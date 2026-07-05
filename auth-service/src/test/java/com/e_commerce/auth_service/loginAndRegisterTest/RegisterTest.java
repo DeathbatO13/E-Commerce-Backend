@@ -103,7 +103,7 @@ public class RegisterTest {
                 .thenReturn(Optional.of(user));
         when(passwordEncoder.matches("password", "hashed"))
                 .thenReturn(true);
-        when(tokenGenerator.generateToken(any(), any()))
+        when(tokenGenerator.generateToken(any()))
                 .thenReturn("fake-token");
 
         String token = authService.login(user.getEmail(), "password");
