@@ -14,6 +14,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Filtro de Spring Security que valida y procesa tokens JWT en cada solicitud.
@@ -76,10 +77,9 @@ public class JwtAuthFilter extends OncePerRequestFilter{
 
                     List<String> roles = claims.get("roles", List.class);
 
-                    List<SimpleGrantedAuthority> authorities =
-                            roles.stream()
-                                    .map(role -> new SimpleGrantedAuthority("ROLE_" + role))
-                                    .toList();
+                    List<GrantedAuthority> authorities = roles.stream()
+                            .map(SimpleGrantedAuthority::new)
+                            .collect(Collectors.toList());
 
                     UsernamePasswordAuthenticationToken auth =
                             new UsernamePasswordAuthenticationToken(

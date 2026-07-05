@@ -1,12 +1,18 @@
 package com.e_commerce.auth_service.adapter.out.security;
 
+import com.e_commerce.auth_service.domain.model.User;
 import com.e_commerce.auth_service.domain.port.out.TokenGeneratorPort;
 import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Adaptador de salida que implementa el puerto {@link TokenGeneratorPort}
@@ -25,7 +31,8 @@ import java.util.Date;
 @Component
 public class JwtTokenGeneratorAdapter implements TokenGeneratorPort {
 
-    private static final String SECRET = "super-secret-key-super-secret-key";
+    @Value("${jwt.secret}")
+    private String secretKey;
     private static final long EXPIRATION_MS = 86400000;
 
     /**
@@ -43,18 +50,20 @@ public class JwtTokenGeneratorAdapter implements TokenGeneratorPort {
      * Firma el token utilizando HMAC-SHA256 con la clave secreta configurada.
      * </p>
      *
-     * @param userId ID único del usuario (normalmente UUID como String)
-     * @param email  correo electrónico del usuario (se incluye como claim)
+     * @param user usuario
      * @return token JWT compactado y firmado (String)
      */
     @Override
-    public String generateToken(String userId, String email) {
-        return Jwts.builder()
-                .setSubject(userId)
-                .claim("email", email)
-                .setIssuedAt(new Date())
+    public String generateToken(User user) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("email", user.getEmail());
+        claims.put("roles", List.of(user.getRoles()));
+
+        return Jwts.builder().setClaims(claims)
+                .setSubject(user.getId().toString())
+                .setIssuedAt(new Date(System.currentTimeMillis()))
                 .setExpiration(new Date(System.currentTimeMillis() + EXPIRATION_MS))
-                .signWith(Keys.hmacShaKeyFor(SECRET.getBytes(StandardCharsets.UTF_8)))
+                .signWith(SignatureAlgorithm.HS256, secretKey)
                 .compact();
     }
 

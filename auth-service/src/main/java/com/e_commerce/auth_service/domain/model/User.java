@@ -53,7 +53,4 @@ public class User {
         return enabled;
     }
 
-    public void setRoles(Set<Role> newRole) {
-        this.roles = newRole;
-    }
 }
