@@ -1,4 +1,4 @@
-/server:
+server:
   port: 8081
 
 spring:
@@ -13,7 +13,6 @@ spring:
   flyway:
     enabled: false
 
-security:
-  jwt:
-    secret: very-secret-key-very-secret-key-very-secret
-    expiration: 3600000
+jwt:
+  secret: very-secret-key-very-secret-key-very-secret
+  expiration: 3600000

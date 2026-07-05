@@ -65,7 +65,7 @@ public class AuthApplicationService implements LoginUseCase,
             throw new IllegalArgumentException("Invalid credentials");
         }
 
-        return tokenGenerator.generateToken(String.valueOf(user.getId()), email);
+        return tokenGenerator.generateToken(user);
 
     }
 
