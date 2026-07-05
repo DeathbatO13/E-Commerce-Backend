@@ -1,5 +1,7 @@
 package com.e_commerce.auth_service.domain.port.out;
 
+import com.e_commerce.auth_service.domain.model.User;
+
 /**
  * Puerto de salida (output port) que define el contrato para la generación
  * de tokens de acceso (normalmente JWT) en el dominio.
@@ -30,9 +32,7 @@ public interface TokenGeneratorPort {
      * algoritmo de firma y tiempo de expiración.
      * </p>
      *
-     * @param userId  identificador único del usuario (normalmente UUID como String)
-     * @param email   correo electrónico del usuario (usualmente incluido como claim)
      * @return token de acceso en formato String listo para enviar al cliente
      */
-    String generateToken(String userId, String email);
+    String generateToken(User user);
 }
