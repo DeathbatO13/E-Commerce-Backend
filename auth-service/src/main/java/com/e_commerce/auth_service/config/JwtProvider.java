@@ -2,8 +2,12 @@ package com.e_commerce.auth_service.config;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+
+import javax.crypto.SecretKey;
+import java.nio.charset.StandardCharsets;
 
 
 /**
@@ -39,8 +43,11 @@ public class JwtProvider{
      * @throws io.jsonwebtoken.JwtException si el token es inválido, expirado o mal firmado
      */
     public Claims getClaims(String token) {
+
+        SecretKey key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+
         return Jwts.parserBuilder()
-                .setSigningKey(secret.getBytes())
+                .setSigningKey(key)
                 .build()
                 .parseClaimsJws(token)
                 .getBody();
