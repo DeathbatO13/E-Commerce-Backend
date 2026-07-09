@@ -31,10 +31,8 @@ public class SecurityConfig{
                 .sessionManagement(sm ->
                         sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/auth/**", "/swagger-iu/**", "v3/api-docs/**")
-                        .permitAll()
-                        .requestMatchers("/admin/**").hasRole("SUPER_ADMIN")
-                        .requestMatchers("/user/**").hasAnyRole("ADMIN", "CLIENT")
+                        .requestMatchers("/cart/admin/**").hasRole("SUPER_ADMIN")
+                        .requestMatchers("/cart/**").hasAnyRole("ADMIN", "CLIENT")
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
