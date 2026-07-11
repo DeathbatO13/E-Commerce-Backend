@@ -14,4 +14,5 @@ spring:
 
   security:
     jwt:
-      secret: very-secret-key-very-secret-key-very-secret
+      secret: mySuperSecretKey12345678901234567890123456789012
+      expiration: 86400000 # 24 horas en milisegundos

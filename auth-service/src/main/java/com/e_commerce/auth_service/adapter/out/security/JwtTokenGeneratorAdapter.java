@@ -1,5 +1,6 @@
 package com.e_commerce.auth_service.adapter.out.security;
 
+import com.e_commerce.auth_service.domain.model.Role;
 import com.e_commerce.auth_service.domain.model.User;
 import com.e_commerce.auth_service.domain.port.out.TokenGeneratorPort;
 import io.jsonwebtoken.Jwts;
@@ -32,9 +33,9 @@ import java.util.Map;
 @Component
 public class JwtTokenGeneratorAdapter implements TokenGeneratorPort {
 
-    @Value("${jwt.secret}")
+    @Value("${security.jwt.secret}")
     private String secretKey;
-    @Value("${jwt.expiration}")
+    @Value("${security.jwt.expiration}")
     private long expiration;
 
     /**
@@ -57,9 +58,10 @@ public class JwtTokenGeneratorAdapter implements TokenGeneratorPort {
      */
     @Override
     public String generateToken(User user) {
+
         Map<String, Object> claims = new HashMap<>();
         claims.put("email", user.getEmail());
-        claims.put("roles", List.of(user.getRoles()));
+        claims.put("roles", user.getRoles().stream().map(Role::name).toList());
 
         SecretKey key = Keys.hmacShaKeyFor(secretKey.getBytes(StandardCharsets.UTF_8));
 
