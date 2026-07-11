@@ -16,3 +16,7 @@ spring:
   sql:
     init:
       mode: never
+
+  jwt:
+    secret: mySuperSecretKey12345678901234567890123456789012
+    expiration: 86400000 # 24 horas en milisegundos

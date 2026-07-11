@@ -27,7 +27,7 @@ import java.nio.charset.StandardCharsets;
 @Component
 public class JwtProvider{
 
-    @Value("${jwt.secret}")
+    @Value("${security.jwt.secret}")
     private String secret;
 
     /**
