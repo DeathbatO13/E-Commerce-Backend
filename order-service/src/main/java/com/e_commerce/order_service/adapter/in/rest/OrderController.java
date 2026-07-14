@@ -5,9 +5,12 @@ import com.e_commerce.order_service.adapter.in.rest.dto.request.CreateOrderReque
 import com.e_commerce.order_service.adapter.in.rest.mapper.RestMapper;
 import com.e_commerce.order_service.domain.ports.in.CreateOrderUseCase;
 import com.e_commerce.order_service.domain.ports.in.GetOrderUseCase;
+import jakarta.validation.Valid;
+import org.springframework.security.core.Authentication;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.net.URI;
 import java.util.UUID;
 
 @RestController
@@ -24,11 +27,12 @@ public class OrderController{
 
     @PostMapping
     public ResponseEntity<Void> createOrder(
-            @RequestHeader("X-User-Id")UUID userId,
-            @RequestBody CreateOrderRequest request
-            ){
+            @RequestBody  @Valid CreateOrderRequest request,
+            Authentication authentication){
 
         var items = RestMapper.toDomainItems(request.items());
+
+        UUID userId = UUID.fromString(authentication.getName());
 
         UUID orderId = createOrderUseCase.createOrder(
                 userId,
@@ -37,7 +41,7 @@ public class OrderController{
                 request.total()
         );
 
-        return ResponseEntity.created(null).build();
+        return ResponseEntity.created(URI.create("/orders/" + orderId)).build();
 
     }
 
