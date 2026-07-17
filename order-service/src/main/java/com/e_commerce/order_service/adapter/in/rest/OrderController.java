@@ -2,7 +2,9 @@ package com.e_commerce.order_service.adapter.in.rest;
 
 
 import com.e_commerce.order_service.adapter.in.rest.dto.request.CreateOrderRequest;
+import com.e_commerce.order_service.adapter.in.rest.dto.response.OrderResponse;
 import com.e_commerce.order_service.adapter.in.rest.mapper.RestMapper;
+import com.e_commerce.order_service.domain.model.Order;
 import com.e_commerce.order_service.domain.ports.in.CreateOrderUseCase;
 import com.e_commerce.order_service.domain.ports.in.GetOrderUseCase;
 import jakarta.validation.Valid;
@@ -11,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -46,8 +49,22 @@ public class OrderController{
     }
 
     @GetMapping
-    public ResponseEntity<?> getOrders(){
-        return ResponseEntity.ok(getOrderUseCase.getAllOrders());
+    public ResponseEntity<List<OrderResponse>> getOrders(
+            Authentication authentication){
+
+        UUID userId = UUID.fromString(authentication.getName());
+
+        boolean isAdmin = authentication.getAuthorities().stream()
+                .anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMMIN")
+                || auth.getAuthority().equals("ROLE_SUPER_ADMIN"));
+
+        List<Order> orders;
+        if (isAdmin)
+            orders = getOrderUseCase.getAllOrders();
+        else
+            orders = getOrderUseCase.getOrderByUser(userId);
+
+        return ResponseEntity.ok(orders);
     }
 
 
