@@ -70,13 +70,10 @@ public class JwtAuthFilter extends OncePerRequestFilter{
 
                 String token = header.substring(7);
 
-
                 if(jwtProvider.validateToken(token)) {
 
                     Claims claims = jwtProvider.getClaims(token);
-
                     List<String> roles = claims.get("roles", List.class);
-
                     List<GrantedAuthority> authorities = roles.stream()
                             .map(role -> new SimpleGrantedAuthority("ROLE_"+role))
                             .collect(Collectors.toList());

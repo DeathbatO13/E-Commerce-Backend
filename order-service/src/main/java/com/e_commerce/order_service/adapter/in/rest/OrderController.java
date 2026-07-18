@@ -4,7 +4,6 @@ package com.e_commerce.order_service.adapter.in.rest;
 import com.e_commerce.order_service.adapter.in.rest.dto.request.CreateOrderRequest;
 import com.e_commerce.order_service.adapter.in.rest.dto.response.OrderResponse;
 import com.e_commerce.order_service.adapter.in.rest.mapper.RestMapper;
-import com.e_commerce.order_service.domain.model.Order;
 import com.e_commerce.order_service.domain.ports.in.CreateOrderUseCase;
 import com.e_commerce.order_service.domain.ports.in.GetOrderUseCase;
 import jakarta.validation.Valid;
