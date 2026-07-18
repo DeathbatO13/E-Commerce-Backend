@@ -58,7 +58,7 @@ public class OrderController{
                 .anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMMIN")
                 || auth.getAuthority().equals("ROLE_SUPER_ADMIN"));
 
-        List<Order> orders;
+        List<OrderResponse> orders;
         if (isAdmin)
             orders = getOrderUseCase.getAllOrders();
         else
