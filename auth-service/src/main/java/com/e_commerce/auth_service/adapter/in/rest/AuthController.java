@@ -50,7 +50,7 @@ public class AuthController{
      */
     @PostMapping("/register")
     @ResponseStatus(HttpStatus.CREATED)
-    public RegisterResponse register(@RequestBody @Valid RegisterRequest request){
+    public RegisterResponse register(@Valid @RequestBody RegisterRequest request){
         User user = registerUserUseCase.register(
                 request.email(),
                 request.password(),
