@@ -1,9 +1,11 @@
 package com.e_commerce.auth_service.adapter.in.rest;
 
 import com.e_commerce.auth_service.adapter.in.rest.dto.UserResponse;
+import com.e_commerce.auth_service.domain.model.Role;
 import com.e_commerce.auth_service.domain.model.User;
 import com.e_commerce.auth_service.domain.port.in.ChangeUserRoleUseCase;
 import com.e_commerce.auth_service.domain.port.in.ListUsersUseCase;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -32,12 +34,16 @@ public class UserController{
                 .toList();
     }
 
-    @PutMapping("/users/{id}/role")
-    public void changeRole(
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @PostMapping("/admin/users/{id}/role")
+    public ResponseEntity<Void> changeRole(
             @PathVariable UUID id,
-            @RequestParam String role
-    ) {
-        changeUserRoleUseCase.changeUserRole(id, role);
+            @RequestParam Role role) {
+        if (role == Role.SUPER_ADMIN) {
+            throw new IllegalArgumentException("SUPER_ADMIN no puede asignarse");
+        }
+        changeUserRoleUseCase.changeUserRole(id, role.toString());
+        return ResponseEntity.ok().build();
     }
 
     private UserResponse toResponse(User user) {
