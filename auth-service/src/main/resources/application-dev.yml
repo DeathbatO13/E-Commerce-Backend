@@ -19,6 +19,7 @@ spring:
 
 admin:
   email: administrator@admin.com
-  password: Admin1234
   fullname: Administrador
+  password: Admin1234
+
 
