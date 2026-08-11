@@ -3,9 +3,12 @@ package com.e_commerce.catalog_service.adapter.in.rest;
 import com.e_commerce.catalog_service.adapter.in.rest.dto.request.CreateProductRequest;
 import com.e_commerce.catalog_service.adapter.in.rest.dto.request.UpdateProductRequest;
 import com.e_commerce.catalog_service.adapter.in.rest.dto.response.ProductResponse;
+import com.e_commerce.catalog_service.application.service.CategoryApplicationService;
 import com.e_commerce.catalog_service.domain.model.Category;
 import com.e_commerce.catalog_service.domain.model.Product;
 import com.e_commerce.catalog_service.domain.port.in.*;
+import jakarta.persistence.EntityNotFoundException;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -27,18 +30,21 @@ public class ProductController {
     private final GetProductUseCase getProductUseCase;
     private final UpdateProductUseCase updateProductUseCase;
     private final DeleteProductUseCase deleteProductUseCase;
+    private final CategoryApplicationService categoryService;
 
     public ProductController(
             CreateProductUseCase createProductUseCase,
             ListProductUseCase listProductsUseCase,
             GetProductUseCase getProductUseCase,
             UpdateProductUseCase updateProductUseCase,
-            DeleteProductUseCase deleteProductUseCase) {
+            DeleteProductUseCase deleteProductUseCase,
+            CategoryApplicationService categoryService) {
         this.createProductUseCase = createProductUseCase;
         this.listProductsUseCase = listProductsUseCase;
         this.getProductUseCase = getProductUseCase;
         this.updateProductUseCase = updateProductUseCase;
         this.deleteProductUseCase = deleteProductUseCase;
+        this.categoryService = categoryService;
     }
 
     /**
@@ -66,7 +72,11 @@ public class ProductController {
      * @return respuesta con los datos del producto creado
      */
     @PostMapping
-    public ProductResponse create(@RequestBody CreateProductRequest request) {
+    public ProductResponse create(@Valid @RequestBody CreateProductRequest request) {
+
+        if(!categoryService.existsById(request.categoryId()))
+            throw new EntityNotFoundException("Categoria no encontrada");
+
         var product = createProductUseCase.create(
                 new Product(
                         UUID.randomUUID(),

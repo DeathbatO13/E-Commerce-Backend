@@ -49,5 +49,7 @@ public interface CategoryRepository {
      * @param id identificador de la categoría a desactivar
      */
     void deactivate(UUID id);
+
+    boolean existsById(UUID id);
 }
 

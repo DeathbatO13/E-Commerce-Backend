@@ -31,14 +31,15 @@ public class SecurityConfig {
                 .sessionManagement(sm ->
                         sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                    .requestMatchers("/products/**", "/categories/**").permitAll() // GET públicos
-                    .requestMatchers(HttpMethod.POST, "/products/**", "/categories/**").hasAnyRole("ADMIN", "SUPER_ADMIN")
-                    .requestMatchers(HttpMethod.PUT, "/products/**", "/categories/**").hasAnyRole("ADMIN", "SUPER_ADMIN")
-                    .requestMatchers(HttpMethod.DELETE, "/products/**", "/categories/**").hasAnyRole("ADMIN", "SUPER_ADMIN")
-                    .anyRequest().authenticated());
+                    .requestMatchers(HttpMethod.GET, "/products/**", "/categories/**")
+                        .permitAll()
+                        .requestMatchers("/products/**", "/categories/**")
+                        .hasAnyRole("ADMIN", "SUPER_ADMIN")
+                        .anyRequest().authenticated());
 
             http.addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
             return http.build();
     }
+
 }

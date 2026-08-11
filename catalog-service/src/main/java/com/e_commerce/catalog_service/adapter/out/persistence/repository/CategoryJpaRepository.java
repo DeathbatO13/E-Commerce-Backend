@@ -32,4 +32,6 @@ public interface CategoryJpaRepository extends JpaRepository<CategoryJpaEntity, 
      * @return lista de entidades de categorías activas
      */
     List<CategoryJpaEntity> findByActiveTrue();
+
+    boolean existsById(UUID id);
 }
