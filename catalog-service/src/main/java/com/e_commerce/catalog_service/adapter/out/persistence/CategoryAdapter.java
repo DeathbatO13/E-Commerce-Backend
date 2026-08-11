@@ -90,4 +90,9 @@ public class CategoryAdapter implements CategoryRepository {
 
         entity.setActive(false);
     }
+
+    @Override
+    public boolean existsById(UUID id) {
+        return categoryJpaRepository.existsById(id);
+    }
 }

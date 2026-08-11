@@ -2,7 +2,7 @@ spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/catalog_db
     username: postgres
-    password: postgresPassword
+    password: postgres
     driver-class-name: org.postgresql.Driver
 
   jpa:
@@ -17,10 +17,9 @@ spring:
     enabled: true
     locations: classpath:db/migration
 
-  security:
-    jwt:
-      secret: mySuperSecretKey12345678901234567890123456789012
-      expiration: 86400000 # 24 horas en milisegundos
+  jwt:
+    secret: mySuperSecretKey12345678901234567890123456789012
+    expiration: 86400000
 
 server:
   port: 8082

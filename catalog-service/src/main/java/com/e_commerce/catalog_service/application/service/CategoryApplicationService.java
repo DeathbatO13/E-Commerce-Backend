@@ -1,10 +1,7 @@
 package com.e_commerce.catalog_service.application.service;
 
 import com.e_commerce.catalog_service.domain.model.Category;
-import com.e_commerce.catalog_service.domain.port.in.CreateCategoryUseCase;
-import com.e_commerce.catalog_service.domain.port.in.DeleteCategoryUseCase;
-import com.e_commerce.catalog_service.domain.port.in.ListCategoriesUseCase;
-import com.e_commerce.catalog_service.domain.port.in.UpdateCategoryUseCase;
+import com.e_commerce.catalog_service.domain.port.in.*;
 import com.e_commerce.catalog_service.domain.port.out.CategoryRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
@@ -22,7 +19,8 @@ import java.util.UUID;
 @Service
 @Transactional
 public class CategoryApplicationService implements CreateCategoryUseCase,
-        ListCategoriesUseCase, UpdateCategoryUseCase, DeleteCategoryUseCase {
+        ListCategoriesUseCase, UpdateCategoryUseCase, DeleteCategoryUseCase,
+        ConfirmCategoryExistsUseCase {
 
     private final CategoryRepository categoryRepository;
 
@@ -81,5 +79,10 @@ public class CategoryApplicationService implements CreateCategoryUseCase,
 
         category.setName(name);
         return categoryRepository.save(category);
+    }
+
+    @Override
+    public boolean existsById(UUID id) {
+        return categoryRepository.existsById(id);
     }
 }
