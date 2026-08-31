@@ -21,10 +21,13 @@ public class OrderController{
 
     private final CreateOrderUseCase createOrderUseCase;
     private final GetOrderUseCase getOrderUseCase;
+    private final RestMapper mapper;
 
-    public OrderController(CreateOrderUseCase createOrderUseCase, GetOrderUseCase getOrderUseCase){
+    public OrderController(CreateOrderUseCase createOrderUseCase, GetOrderUseCase getOrderUseCase,
+                           RestMapper mapper){
         this.createOrderUseCase = createOrderUseCase;
         this.getOrderUseCase = getOrderUseCase;
+        this.mapper = mapper;
     }
 
     @PostMapping
@@ -54,14 +57,16 @@ public class OrderController{
         UUID userId = UUID.fromString(authentication.getName());
 
         boolean isAdmin = authentication.getAuthorities().stream()
-                .anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMMIN")
+                .anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN")
                 || auth.getAuthority().equals("ROLE_SUPER_ADMIN"));
 
         List<OrderResponse> orders;
         if (isAdmin)
-            orders = getOrderUseCase.getAllOrders();
+            orders = getOrderUseCase.getAllOrders()
+                    .stream().map(mapper::toResponse).toList();
         else
-            orders = getOrderUseCase.getOrderByUser(userId);
+            orders = getOrderUseCase.getOrderByUser(userId)
+                    .stream().map(mapper::toResponse).toList();
 
         return ResponseEntity.ok(orders);
     }
