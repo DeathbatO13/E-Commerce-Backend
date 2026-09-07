@@ -1,7 +1,5 @@
 package com.e_commerce.order_service.application.service;
 
-import com.e_commerce.order_service.adapter.in.rest.mapper.RestMapper;
-import com.e_commerce.order_service.adapter.out.persistence.mapper.OrderMapper;
 import com.e_commerce.order_service.domain.model.Order;
 import com.e_commerce.order_service.domain.model.OrderItem;
 import com.e_commerce.order_service.domain.ports.in.CreateOrderUseCase;
@@ -16,11 +14,9 @@ import java.util.UUID;
 public class OrderService implements CreateOrderUseCase, GetOrderUseCase {
 
     private final OrderRepositoryPort orderRepository;
-    private final OrderMapper mapper;
 
-    public OrderService(OrderRepositoryPort orderRepository, OrderMapper mapper) {
+    public OrderService(OrderRepositoryPort orderRepository) {
         this.orderRepository = orderRepository;
-        this.mapper = mapper;
     }
 
     @Override
@@ -40,7 +36,7 @@ public class OrderService implements CreateOrderUseCase, GetOrderUseCase {
 
     @Override
     public List<Order> getAllOrders() {
-        return orderRepository.findAll().stream().toList();
+        return orderRepository.findAll();
     }
 
     @Override
