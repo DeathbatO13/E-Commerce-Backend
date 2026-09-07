@@ -21,6 +21,7 @@ public class RestMapper{
 
     public OrderResponse toResponse(Order order){
 
+<<<<<<< HEAD
         OrderResponse response = new OrderResponse(
                 order.getId(),
                 order.getUserId(),
@@ -31,5 +32,8 @@ public class RestMapper{
         );
 
         return response;
+=======
+        OrderResponse response = new OrderResponse();
+>>>>>>> c0d2c85 (Comenzando a corregir)
     }
 }
