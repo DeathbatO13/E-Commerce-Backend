@@ -2,6 +2,7 @@ package com.e_commerce.order_service.adapter.in.rest.mapper;
 
 import com.e_commerce.order_service.adapter.in.rest.dto.request.OrderItemRequest;
 import com.e_commerce.order_service.adapter.in.rest.dto.response.OrderResponse;
+import com.e_commerce.order_service.adapter.out.persistence.mapper.OrderMapper;
 import com.e_commerce.order_service.domain.model.Order;
 import com.e_commerce.order_service.domain.model.OrderItem;
 
@@ -9,6 +10,12 @@ import com.e_commerce.order_service.domain.model.OrderItem;
 import java.util.List;
 
 public class RestMapper{
+
+    private final OrderMapper mapper;
+
+    public RestMapper(OrderMapper mapper){
+       this.mapper = mapper;
+    }
 
     public static List<OrderItem> toDomainItems(List<OrderItemRequest> items){
         return items.stream()
@@ -19,9 +26,8 @@ public class RestMapper{
                 )).toList();
     }
 
-    public OrderResponse toResponse(Order order){
+    /*public OrderResponse toResponse(Order order){
 
-<<<<<<< HEAD
         OrderResponse response = new OrderResponse(
                 order.getId(),
                 order.getUserId(),
@@ -32,8 +38,6 @@ public class RestMapper{
         );
 
         return response;
-=======
-        OrderResponse response = new OrderResponse();
->>>>>>> c0d2c85 (Comenzando a corregir)
-    }
+
+    }*/
 }

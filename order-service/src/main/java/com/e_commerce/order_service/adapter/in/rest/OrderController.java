@@ -60,14 +60,14 @@ public class OrderController{
                 .anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN")
                 || auth.getAuthority().equals("ROLE_SUPER_ADMIN"));
 
-        List<OrderResponse> orders;
-        if (isAdmin)
+        List<OrderResponse> orders = List.of();
+        /*if (isAdmin)
             orders = getOrderUseCase.getAllOrders()
                     .stream().map(mapper::toResponse).toList();
         else
             orders = getOrderUseCase.getOrderByUser(userId)
                     .stream().map(mapper::toResponse).toList();
-
+        */
         return ResponseEntity.ok(orders);
     }
 
