@@ -15,10 +15,11 @@ public class CartApplicationService implements
         UpdateCartItemQuantityUseCase, GetCartUseCase, ClearCartUseCase{
 
     private final CartRepository cartRepository;
-    CatalogPort catalogPort;
+    private final CatalogPort catalogPort;
 
-    public CartApplicationService(CartRepository cartRepository) {
+    public CartApplicationService(CartRepository cartRepository, CatalogPort catalogPort) {
         this.cartRepository = cartRepository;
+        this.catalogPort = catalogPort;
     }
 
     @Override

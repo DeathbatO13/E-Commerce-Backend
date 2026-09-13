@@ -46,19 +46,19 @@ Objetivo: que lo que "ya está hecho" funcione de verdad antes de sumar código 
 ### 1.1 Order-service
 
 - [x] **Eliminar el paquete de persistencia duplicado.** Quedarte solo con `adapter.out.persistence.*` (es el que respeta la convención hexagonal del resto del proyecto) y borrar `order_service.persistence.*`.
-- [ ] **Corregir `"ROLE_ADMMIN"` → `"ROLE_ADMIN"`** en `OrderController`. *Por qué:* es la condición que decide si un usuario ve todos los pedidos (admin) o solo los suyos; con el typo, esa rama nunca se ejecuta.
-- [ ] **Agregar validación de "ownership" en `GET /orders/{id}`**: hoy cualquier usuario autenticado puede ver el pedido de otro usuario solo sabiendo el ID. Hay que verificar que `order.getUserId()` sea igual al usuario autenticado, o que el usuario sea ADMIN/SUPER_ADMIN.
+- [x] **Corregir `"ROLE_ADMMIN"` → `"ROLE_ADMIN"`** en `OrderController`.
+- [x] **Agregar validación de "ownership" en `GET /orders/{id}`**: verifica que `order.getUserId()` sea igual al usuario autenticado (retornando 403 Forbidden si no coincide), o que el usuario sea ADMIN/SUPER_ADMIN.
 
 ### 1.2 Cart-service
 
-- [ ] **Implementar el adaptador HTTP para `CatalogPort`**: una clase en `adapter/out` que llame por HTTP a `GET /products/{id}` de catalog-service (usando `RestClient` de Spring, que es el cliente HTTP moderno recomendado desde Spring 6).
-- [ ] **Inyectar `CatalogPort` correctamente** en `CartApplicationService` (por constructor, como ya se hace con `CartRepository`). *Por qué:* Spring solo puede inyectar dependencias que reciba explícitamente (constructor o `@Autowired`); un campo declarado "a mano" sin eso queda siempre `null`.
-- [ ] **Validar que el producto exista y esté activo** antes de agregarlo al carrito (regla de negocio: "no se pueden agregar productos inexistentes o deshabilitados").
+- [x] **Implementar el adaptador HTTP para `CatalogPort`**: se creó `CatalogHttpAdapter` en `adapter/out/http` que consulta `catalog-service` vía `RestClient`.
+- [x] **Inyectar `CatalogPort` correctamente** en `CartApplicationService` (por constructor).
+- [x] **Validar que el producto exista y esté activo** antes de agregarlo al carrito.
 
 ### 1.3 Auth-service
 
-- [ ] **Corregir la ruta duplicada**: dejar `@PostMapping("/users/{id}/role")` (sin repetir `/admin`, porque ya está en el `@RequestMapping` de la clase).
-- [ ] **Permitir que ADMIN también liste usuarios**: mover el `@PreAuthorize("hasRole('SUPER_ADMIN')")` del nivel de clase al método `changeRole` únicamente, dejando `listUsers` accesible para ADMIN y SUPER_ADMIN.
+- [x] **Corregir la ruta duplicada**: `@PostMapping("/users/{id}/role")` en `UserController`.
+- [x] **Permitir que ADMIN también liste usuarios**: `@PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")` en `listUsers`.
 
 ---
 
@@ -68,26 +68,26 @@ Esta es la fase más importante para entender **cómo se comunican los microserv
 
 ### 2.1 Order-service pide el carrito, no lo recibe del cliente
 
-- [ ] Cambiar `CreateOrderRequest` para que solo reciba `address` (nada de `items`/`total` desde el cliente). *Por qué:* si el precio y los productos vienen del cliente, cualquiera podría manipular el request y comprar algo a $0. El precio siempre se recalcula en el servidor.
-- [ ] Crear el puerto de salida `CartPort` en order-service, con un método tipo `getActiveCart(userId)`.
-- [ ] Implementar el adaptador HTTP de `CartPort` (llamando a `GET /cart` de cart-service, pasando el JWT del usuario para que cart-service sepa de quién es el carrito).
-- [ ] Reusar (o crear) `CatalogPort` en order-service para volver a consultar el precio actual de cada producto al momento de crear el pedido (nunca confiar en el precio que traiga el carrito, por si cambió).
-- [ ] En el caso de uso `CreateOrder`: obtener el carrito activo → validar que no esté vacío → construir los `OrderItem` con precios verificados → crear el `Order` → llamar a cart-service para **vaciar el carrito** una vez creado el pedido.
+- [x] Cambiar `CreateOrderRequest` para que solo reciba `address` (nada de `items`/`total` desde el cliente).
+- [x] Crear el puerto de salida `CartPort` en order-service, con métodos `getActiveCart(userId, token)` y `clearCart(userId, token)`.
+- [x] Implementar el adaptador HTTP de `CartPort` (`CartHttpAdapter`) llamando a `GET /cart` y `DELETE /cart` de cart-service pasando el JWT del usuario.
+- [x] Crear `CatalogPort` (`CatalogHttpAdapter`) en order-service para consultar el precio oficial de cada producto al momento de crear el pedido.
+- [x] En el caso de uso `CreateOrder`: obtener el carrito activo → validar que no esté vacío → construir los `OrderItem` con precios verificados → crear el `Order` → llamar a cart-service para **vaciar el carrito** una vez creado el pedido.
 
 ### 2.2 Endpoints de transición de estado
 
-- [ ] `POST /orders/{id}/pay` — pensado para ser llamado por payment-service cuando el pago es aprobado. Usa el método `order.markAsPaid()` que ya existe en el dominio.
-- [ ] `POST /orders/{id}/cancel` — usa `order.cancel()`, ya existente, que valida que el pedido no esté `PAID`.
+- [x] `POST /orders/{id}/pay` — invocado por payment-service cuando el pago es aprobado; ejecuta `order.markAsPaid()`.
+- [x] `POST /orders/{id}/cancel` — ejecuta `order.cancel()`, validando ownership y que el pedido no esté `PAID`.
 
 ### 2.3 Payment-service (microservicio nuevo)
 
-- [ ] Crear el módulo `payment-service/` replicando la estructura hexagonal de los demás servicios (`domain/model`, `domain/port/in|out`, `application/service`, `adapter/in/rest`, `adapter/out/persistence`, `config`).
-- [ ] Modelo de dominio `Payment` (id, orderId, amount, status `APPROVED`/`REJECTED`, transactionId, fecha).
-- [ ] Caso de uso `ProcessPaymentUseCase`: simula el resultado del pago (por ejemplo, aprobar si el monto es válido, o según un flag de prueba en el request — es un mock, no una pasarela real).
-- [ ] Endpoint `POST /payments/process`, protegido con JWT, conforme al contrato ya definido en `docs/openapi/payment.yaml`.
-- [ ] Cuando el pago se aprueba: payment-service llama a `POST /orders/{id}/pay` en order-service (cliente HTTP, igual que hicimos con `CatalogPort`/`CartPort`).
-- [ ] Persistir cada intento de pago en su propia base de datos (tabla `payments`, con su migración Flyway), aunque sea simulado — sirve para auditoría y para practicar el patrón "una DB por microservicio".
-- [ ] Archivos `application.yaml`, `application-dev.yaml`, `application-test.yaml` (puerto sugerido: 8085, ya reservado en el OpenAPI).
+- [x] Crear el módulo `payment-service/` en el puerto `8085` replicando la estructura hexagonal de los demás servicios (`domain/model`, `domain/port/in|out`, `application/service`, `adapter/in/rest`, `adapter/out/persistence`, `adapter/out/http`, `config`).
+- [x] Modelo de dominio `Payment` (id, orderId, amount, status `APPROVED`/`REJECTED`, transactionId, fecha).
+- [x] Caso de uso `ProcessPaymentUseCase`: procesa el intento de pago mockeado.
+- [x] Endpoint `POST /payments/process`, protegido con JWT.
+- [x] Cuando el pago se aprueba: `payment-service` llama a `POST /orders/{id}/pay` en order-service mediante `OrderHttpAdapter`.
+- [x] Persistir cada intento de pago en la base de datos `payment_db` (tabla `payments`, con migración Flyway `V1__init_payment_schema.sql`).
+- [x] Archivo `application.yml` configurado en el puerto 8085.
 
 ---
 
