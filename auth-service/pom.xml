@@ -48,6 +48,12 @@
 			<artifactId>spring-boot-starter-web</artifactId>
 		</dependency>
 
+		<!-- Actuator -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-actuator</artifactId>
+		</dependency>
+
         <!-- PostgreSQL -->
 		<dependency>
 			<groupId>org.postgresql</groupId>
