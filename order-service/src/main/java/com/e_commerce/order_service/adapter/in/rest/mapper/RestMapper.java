@@ -1,8 +1,8 @@
 package com.e_commerce.order_service.adapter.in.rest.mapper;
 
 import com.e_commerce.order_service.adapter.in.rest.dto.request.OrderItemRequest;
+import com.e_commerce.order_service.adapter.in.rest.dto.response.OrderItemResponse;
 import com.e_commerce.order_service.adapter.in.rest.dto.response.OrderResponse;
-import com.e_commerce.order_service.adapter.out.persistence.mapper.OrderMapper;
 import com.e_commerce.order_service.domain.model.Order;
 import com.e_commerce.order_service.domain.model.OrderItem;
 
@@ -11,10 +11,7 @@ import java.util.List;
 
 public class RestMapper{
 
-    private final OrderMapper mapper;
-
-    public RestMapper(OrderMapper mapper){
-       this.mapper = mapper;
+    private RestMapper(){
     }
 
     public static List<OrderItem> toDomainItems(List<OrderItemRequest> items){
@@ -26,18 +23,23 @@ public class RestMapper{
                 )).toList();
     }
 
-    /*public OrderResponse toResponse(Order order){
+    public static OrderResponse toResponse(Order order){
 
-        OrderResponse response = new OrderResponse(
+        List<OrderItemResponse> items = order.getItems().stream()
+                .map(item -> new OrderItemResponse(
+                        item.getProductId(),
+                        item.getQuantity(),
+                        item.getPrice()
+                ))
+                .toList();
+
+        return new OrderResponse(
                 order.getId(),
                 order.getUserId(),
                 order.getStatus().name(),
-                order.getItems().stream().map().toList(),
+                items,
                 order.getTotal(),
                 order.getCreatedAt()
         );
-
-        return response;
-
-    }*/
+    }
 }

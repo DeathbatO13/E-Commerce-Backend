@@ -21,13 +21,10 @@ public class OrderController{
 
     private final CreateOrderUseCase createOrderUseCase;
     private final GetOrderUseCase getOrderUseCase;
-    private final RestMapper mapper;
 
-    public OrderController(CreateOrderUseCase createOrderUseCase, GetOrderUseCase getOrderUseCase,
-                           RestMapper mapper){
+    public OrderController(CreateOrderUseCase createOrderUseCase, GetOrderUseCase getOrderUseCase){
         this.createOrderUseCase = createOrderUseCase;
         this.getOrderUseCase = getOrderUseCase;
-        this.mapper = mapper;
     }
 
     @PostMapping
@@ -60,22 +57,23 @@ public class OrderController{
                 .anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN")
                 || auth.getAuthority().equals("ROLE_SUPER_ADMIN"));
 
-        List<OrderResponse> orders = List.of();
-        /*if (isAdmin)
+        List<OrderResponse> orders;
+        if (isAdmin)
             orders = getOrderUseCase.getAllOrders()
-                    .stream().map(mapper::toResponse).toList();
+                    .stream().map(RestMapper::toResponse).toList();
         else
             orders = getOrderUseCase.getOrderByUser(userId)
-                    .stream().map(mapper::toResponse).toList();
-        */
+                    .stream().map(RestMapper::toResponse).toList();
+
         return ResponseEntity.ok(orders);
     }
 
 
     @GetMapping("/{id}")
-    public ResponseEntity<?> getOrderById(@PathVariable UUID id){
+    public ResponseEntity<OrderResponse> getOrderById(@PathVariable UUID id){
 
         return getOrderUseCase.getOrderById(id)
+                .map(RestMapper::toResponse)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }

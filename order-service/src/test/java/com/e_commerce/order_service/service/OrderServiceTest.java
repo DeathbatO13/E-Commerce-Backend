@@ -52,13 +52,14 @@ public class OrderServiceTest {
 
         when(repository.save(any(Order.class))).thenReturn(savedOrder);
 
-        UUID orderId = OrderService.createOrder(
+        UUID orderId = orderService.createOrder(
                 userId,
                 "Street 123",
                 items,
                 total
         );
 
+        assertEquals(savedOrder.getId(), orderId);
 
     }
 

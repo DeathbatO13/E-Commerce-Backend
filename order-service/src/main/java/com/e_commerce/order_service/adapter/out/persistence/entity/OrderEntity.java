@@ -27,7 +27,6 @@ public class OrderEntity {
 
     private BigDecimal total;
 
-    @Enumerated(EnumType.STRING)
     private String status;
 
     private LocalDateTime createdAt;
