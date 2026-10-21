@@ -10,23 +10,27 @@ import java.util.List;
 
 public class CartMapper {
 
-    public static CartJpaEntity toEntity(Cart cart){
+    public static CartJpaEntity toEntity(Cart cart) {
 
         CartJpaEntity cartEntity = new CartJpaEntity(
                 cart.getId(),
                 cart.getUserId(),
                 cart.getTotalPrice(),
-                new ArrayList<>()
+                new java.util.ArrayList<>()
         );
 
-        List<CartItemJpaEntity> items = cart.getItems().stream()
-                .map( item -> new CartItemJpaEntity(
-                        item.getId(),
-                        item.getProductId(),
-                        item.getPrice(),
-                        item.getQuantity(),
-                        cartEntity
-                )).toList();
+        if (cart.getItems() != null) {
+            List<CartItemJpaEntity> items = cart.getItems().stream()
+                    .map(item -> new CartItemJpaEntity(
+                            item.getId(),
+                            item.getProductId(),
+                            item.getPrice(),
+                            item.getQuantity(),
+                            cartEntity
+                    )).toList();
+
+            cartEntity.getItems().addAll(items);
+        }
 
         return cartEntity;
     }
