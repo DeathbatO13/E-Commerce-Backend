@@ -23,6 +23,11 @@ public class OrderController {
 
     private final CreateOrderUseCase createOrderUseCase;
     private final GetOrderUseCase getOrderUseCase;
+
+    public OrderController(CreateOrderUseCase createOrderUseCase, GetOrderUseCase getOrderUseCase){
+        this.createOrderUseCase = createOrderUseCase;
+        this.getOrderUseCase = getOrderUseCase;
+
     private final PayOrderUseCase payOrderUseCase;
     private final CancelOrderUseCase cancelOrderUseCase;
 
@@ -35,6 +40,7 @@ public class OrderController {
         this.getOrderUseCase = getOrderUseCase;
         this.payOrderUseCase = payOrderUseCase;
         this.cancelOrderUseCase = cancelOrderUseCase;
+
     }
 
     @PostMapping
@@ -92,6 +98,20 @@ public class OrderController {
 
         boolean isAdmin = authentication.getAuthorities().stream()
                 .anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN")
+
+                || auth.getAuthority().equals("ROLE_SUPER_ADMIN"));
+
+        List<OrderResponse> orders;
+        if (isAdmin)
+            orders = getOrderUseCase.getAllOrders()
+                    .stream().map(RestMapper::toResponse).toList();
+        else
+            orders = getOrderUseCase.getOrderByUser(userId)
+                    .stream().map(RestMapper::toResponse).toList();
+
+        return ResponseEntity.ok(orders);
+    }
+
                         || auth.getAuthority().equals("ROLE_SUPER_ADMIN"));
 
         List<Order> orders;
@@ -101,6 +121,7 @@ public class OrderController {
             orders = getOrderUseCase.getOrderByUser(userId);
         }
 
+
         List<OrderResponse> responseList = orders.stream()
                 .map(RestMapper::toResponse)
                 .toList();
@@ -109,6 +130,13 @@ public class OrderController {
     }
 
     @GetMapping("/{id}")
+
+    public ResponseEntity<OrderResponse> getOrderById(@PathVariable UUID id){
+
+        return getOrderUseCase.getOrderById(id)
+                .map(RestMapper::toResponse)
+                .map(ResponseEntity::ok)
+
     public ResponseEntity<OrderResponse> getOrderById(
             @PathVariable UUID id,
             Authentication authentication) {
@@ -125,6 +153,7 @@ public class OrderController {
                     }
                     return ResponseEntity.ok(RestMapper.toResponse(order));
                 })
+
                 .orElse(ResponseEntity.notFound().build());
     }
 }

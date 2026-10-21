@@ -1,5 +1,7 @@
 package com.e_commerce.order_service.application.service;
 
+
+
 import com.e_commerce.order_service.adapter.out.http.dto.CartDto;
 import com.e_commerce.order_service.domain.model.Order;
 import com.e_commerce.order_service.domain.model.OrderItem;
@@ -20,6 +22,10 @@ import java.util.UUID;
 public class OrderService implements CreateOrderUseCase, GetOrderUseCase, PayOrderUseCase, CancelOrderUseCase {
 
     private final OrderRepositoryPort orderRepository;
+
+
+    public OrderService(OrderRepositoryPort orderRepository) {
+        this.orderRepository = orderRepository;
     private final CartPort cartPort;
     private final CatalogPort catalogPort;
 
@@ -27,6 +33,7 @@ public class OrderService implements CreateOrderUseCase, GetOrderUseCase, PayOrd
         this.orderRepository = orderRepository;
         this.cartPort = cartPort;
         this.catalogPort = catalogPort;
+
     }
 
     @Override

@@ -14,5 +14,5 @@ server:
 
 security:
   jwt:
-    secret: very-secret-key-very-secret-key-very-secret
-    expiration: 3600000
+    secret: ${JWT_SECRET:mySuperSecretKey12345678901234567890123456789012}
+    expiration: ${JWT_EXPIRATION:86400000}

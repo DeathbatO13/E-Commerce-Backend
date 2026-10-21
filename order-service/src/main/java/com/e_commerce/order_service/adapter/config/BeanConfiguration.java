@@ -3,6 +3,7 @@ package com.e_commerce.order_service.adapter.config;
 import com.e_commerce.order_service.adapter.out.persistence.OrderAdapter;
 import com.e_commerce.order_service.adapter.out.persistence.repository.OrderRepository;
 import com.e_commerce.order_service.application.service.OrderService;
+
 import com.e_commerce.order_service.domain.ports.in.CancelOrderUseCase;
 import com.e_commerce.order_service.domain.ports.in.CreateOrderUseCase;
 import com.e_commerce.order_service.domain.ports.in.GetOrderUseCase;
@@ -44,6 +45,7 @@ public class BeanConfiguration {
     public GetOrderUseCase getOrderUseCase(OrderService service) {
         return service;
     }
+
 
     @Bean
     public PayOrderUseCase payOrderUseCase(OrderService service) {
