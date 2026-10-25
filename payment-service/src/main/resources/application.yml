@@ -1,0 +1,34 @@
+server:
+  port: ${PORT:8085}
+
+spring:
+  application:
+    name: payment-service
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/payment_db}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+security:
+  jwt:
+    secret: ${JWT_SECRET:mySuperSecretKey12345678901234567890123456789012}
+  # Token compartido con order-service para POST /orders/{id}/pay (mismo valor en ambos servicios)
+  internal-token: ${INTERNAL_SERVICE_TOKEN:dev-internal-token-change-me}
+
+order:
+  service:
+    url: ${ORDER_SERVICE_URL:http://localhost:8084}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

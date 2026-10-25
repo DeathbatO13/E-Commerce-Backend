@@ -14,9 +14,8 @@ import java.util.UUID;
 
 
 @RestController
-@PreAuthorize("hasRole('SUPER_ADMIN')")
 @RequestMapping("/admin")
-public class UserController{
+public class UserController {
 
     private final ListUsersUseCase listUsersUseCase;
     private final ChangeUserRoleUseCase changeUserRoleUseCase;
@@ -26,6 +25,7 @@ public class UserController{
         this.listUsersUseCase = listUsersUseCase;
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     @GetMapping("/users")
     public List<UserResponse> listUsers() {
         return listUsersUseCase.listUsers()
@@ -35,7 +35,7 @@ public class UserController{
     }
 
     @PreAuthorize("hasRole('SUPER_ADMIN')")
-    @PostMapping("/admin/users/{id}/role")
+    @PostMapping("/users/{id}/role")
     public ResponseEntity<Void> changeRole(
             @PathVariable UUID id,
             @RequestParam Role role) {
