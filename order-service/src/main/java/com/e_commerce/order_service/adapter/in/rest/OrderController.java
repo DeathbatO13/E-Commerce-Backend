@@ -35,6 +35,26 @@ public class OrderController {
         this.getOrderUseCase = getOrderUseCase;
         this.payOrderUseCase = payOrderUseCase;
         this.cancelOrderUseCase = cancelOrderUseCase;
+
+
+    public OrderController(CreateOrderUseCase createOrderUseCase, GetOrderUseCase getOrderUseCase){
+        this.createOrderUseCase = createOrderUseCase;
+        this.getOrderUseCase = getOrderUseCase;
+
+    private final PayOrderUseCase payOrderUseCase;
+    private final CancelOrderUseCase cancelOrderUseCase;
+
+    public OrderController(
+            CreateOrderUseCase createOrderUseCase,
+            GetOrderUseCase getOrderUseCase,
+            PayOrderUseCase payOrderUseCase,
+            CancelOrderUseCase cancelOrderUseCase) {
+        this.createOrderUseCase = createOrderUseCase;
+        this.getOrderUseCase = getOrderUseCase;
+        this.payOrderUseCase = payOrderUseCase;
+        this.cancelOrderUseCase = cancelOrderUseCase;
+
+
     }
 
     @PostMapping
@@ -75,6 +95,14 @@ public class OrderController {
             return ResponseEntity.notFound().build();
         }
 
+
+        Order order = orderOpt.get();
+        if (!isAdmin && !order.getUserId().equals(currentUserId)) {
+            return ResponseEntity.status(403).build();
+        }
+
+
+
         Order order = orderOpt.get();
         if (!isAdmin && !order.getUserId().equals(currentUserId)) {
             return ResponseEntity.status(403).build();
@@ -101,6 +129,31 @@ public class OrderController {
             orders = getOrderUseCase.getOrderByUser(userId);
         }
 
+
+                || auth.getAuthority().equals("ROLE_SUPER_ADMIN"));
+
+        List<OrderResponse> orders;
+        if (isAdmin)
+            orders = getOrderUseCase.getAllOrders()
+                    .stream().map(RestMapper::toResponse).toList();
+        else
+            orders = getOrderUseCase.getOrderByUser(userId)
+                    .stream().map(RestMapper::toResponse).toList();
+
+        return ResponseEntity.ok(orders);
+    }
+
+                        || auth.getAuthority().equals("ROLE_SUPER_ADMIN"));
+
+        List<Order> orders;
+        if (isAdmin) {
+            orders = getOrderUseCase.getAllOrders();
+        } else {
+            orders = getOrderUseCase.getOrderByUser(userId);
+        }
+
+
+
         List<OrderResponse> responseList = orders.stream()
                 .map(RestMapper::toResponse)
                 .toList();
@@ -109,6 +162,7 @@ public class OrderController {
     }
 
     @GetMapping("/{id}")
+
     public ResponseEntity<OrderResponse> getOrderById(
             @PathVariable UUID id,
             Authentication authentication) {
@@ -119,6 +173,25 @@ public class OrderController {
                         || auth.getAuthority().equals("ROLE_SUPER_ADMIN"));
 
         return getOrderUseCase.getOrderById(id)
+
+
+    public ResponseEntity<OrderResponse> getOrderById(@PathVariable UUID id){
+
+        return getOrderUseCase.getOrderById(id)
+                .map(RestMapper::toResponse)
+                .map(ResponseEntity::ok)
+
+    public ResponseEntity<OrderResponse> getOrderById(
+            @PathVariable UUID id,
+            Authentication authentication) {
+
+        UUID currentUserId = UUID.fromString(authentication.getName());
+        boolean isAdmin = authentication.getAuthorities().stream()
+                .anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN")
+                        || auth.getAuthority().equals("ROLE_SUPER_ADMIN"));
+
+        return getOrderUseCase.getOrderById(id)
+
                 .map(order -> {
                     if (!isAdmin && !order.getUserId().equals(currentUserId)) {
                         return ResponseEntity.status(403).<OrderResponse>build();

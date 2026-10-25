@@ -16,4 +16,4 @@ server:
 
 security:
   jwt:
-    secret: super-secret-key-super-secret-key
+    secret: ${JWT_SECRET:mySuperSecretKey12345678901234567890123456789012}

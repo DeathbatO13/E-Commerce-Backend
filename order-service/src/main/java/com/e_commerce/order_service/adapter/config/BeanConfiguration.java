@@ -23,6 +23,14 @@ public class BeanConfiguration {
     }
 
     @Bean
+
+
+    @Bean
+    public RestClient.Builder restClientBuilder() {
+        return RestClient.builder();
+    }
+
+    @Bean
     public OrderRepositoryPort orderRepositoryPort(OrderRepository repository) {
         return new OrderAdapter(repository);
     }
@@ -46,6 +54,17 @@ public class BeanConfiguration {
     }
 
     @Bean
+
+    }
+
+    @Bean
+    public GetOrderUseCase getOrderUseCase(OrderService service) {
+        return service;
+    }
+
+
+    @Bean
+
     public PayOrderUseCase payOrderUseCase(OrderService service) {
         return service;
     }

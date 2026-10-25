@@ -13,7 +13,7 @@ import java.nio.charset.StandardCharsets;
 @Component
 public class JwtProvider {
 
-    @Value("${spring.security.jwt.secret}")
+    @Value("${security.jwt.secret}")
     private String secret;
 
     public Claims getClaims(String token) {
