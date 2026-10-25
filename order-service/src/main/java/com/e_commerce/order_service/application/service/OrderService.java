@@ -1,7 +1,5 @@
 package com.e_commerce.order_service.application.service;
 
-
-
 import com.e_commerce.order_service.adapter.out.http.dto.CartDto;
 import com.e_commerce.order_service.domain.model.Order;
 import com.e_commerce.order_service.domain.model.OrderItem;
@@ -23,17 +21,22 @@ public class OrderService implements CreateOrderUseCase, GetOrderUseCase, PayOrd
 
     private final OrderRepositoryPort orderRepository;
 
+    private final CartPort cartPort;
+    private final CatalogPort catalogPort;
+
+
+
 
     public OrderService(OrderRepositoryPort orderRepository) {
         this.orderRepository = orderRepository;
     private final CartPort cartPort;
     private final CatalogPort catalogPort;
 
+
     public OrderService(OrderRepositoryPort orderRepository, CartPort cartPort, CatalogPort catalogPort) {
         this.orderRepository = orderRepository;
         this.cartPort = cartPort;
         this.catalogPort = catalogPort;
-
     }
 
     @Override

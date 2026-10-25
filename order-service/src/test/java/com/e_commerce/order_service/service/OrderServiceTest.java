@@ -54,6 +54,10 @@ public class OrderServiceTest {
         when(repository.save(any(Order.class))).thenReturn(savedOrder);
 
 
+        UUID orderId = orderService.createOrder(userId, "Street 123", token);
+
+
+
         UUID orderId = orderService.createOrder(
                 userId,
                 "Street 123",
@@ -64,6 +68,7 @@ public class OrderServiceTest {
         assertEquals(savedOrder.getId(), orderId);
 
         UUID orderId = orderService.createOrder(userId, "Street 123", token);
+
 
 
         assertNotNull(orderId);

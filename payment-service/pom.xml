@@ -67,7 +67,11 @@
 		<dependency>
 			<groupId>io.jsonwebtoken</groupId>
 			<artifactId>jjwt-impl</artifactId>
+
+			<version>0.11.5</version>
+
 			<version>0.12.6</version>
+
 			<scope>runtime</scope>
 		</dependency>
 		<dependency>
@@ -100,8 +104,10 @@
 							<artifactId>lombok</artifactId>
 						</path>
 					</annotationProcessorPaths>
+
 					<source>21</source>
 					<target>21</target>
+
 				</configuration>
 			</plugin>
 			<plugin>
