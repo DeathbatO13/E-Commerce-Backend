@@ -13,13 +13,11 @@ spring:
       WRITE_DATES_AS_TIMESTAMPS: false
 
 security:
+  jwt:
+    secret: ${JWT_SECRET:mySuperSecretKey12345678901234567890123456789012}
   # Token compartido con payment-service para POST /orders/{id}/pay (mismo valor en ambos servicios)
   internal-token: ${INTERNAL_SERVICE_TOKEN:dev-internal-token-change-me}
 
 logging:
   level:
     root: INFO
-
-security:
-  jwt:
-    secret: ${JWT_SECRET:mySuperSecretKey12345678901234567890123456789012}

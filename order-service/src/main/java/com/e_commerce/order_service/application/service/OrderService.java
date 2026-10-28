@@ -20,18 +20,8 @@ import java.util.UUID;
 public class OrderService implements CreateOrderUseCase, GetOrderUseCase, PayOrderUseCase, CancelOrderUseCase {
 
     private final OrderRepositoryPort orderRepository;
-
     private final CartPort cartPort;
     private final CatalogPort catalogPort;
-
-
-
-
-    public OrderService(OrderRepositoryPort orderRepository) {
-        this.orderRepository = orderRepository;
-    private final CartPort cartPort;
-    private final CatalogPort catalogPort;
-
 
     public OrderService(OrderRepositoryPort orderRepository, CartPort cartPort, CatalogPort catalogPort) {
         this.orderRepository = orderRepository;

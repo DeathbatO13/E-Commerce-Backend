@@ -53,23 +53,7 @@ public class OrderServiceTest {
         Order savedOrder = new Order(userId, "Street 123", items, BigDecimal.valueOf(20));
         when(repository.save(any(Order.class))).thenReturn(savedOrder);
 
-
         UUID orderId = orderService.createOrder(userId, "Street 123", token);
-
-
-
-        UUID orderId = orderService.createOrder(
-                userId,
-                "Street 123",
-                items,
-                total
-        );
-
-        assertEquals(savedOrder.getId(), orderId);
-
-        UUID orderId = orderService.createOrder(userId, "Street 123", token);
-
-
 
         assertNotNull(orderId);
         verify(cartPort).clearCart(userId, token);

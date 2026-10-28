@@ -1,6 +1,9 @@
 package com.e_commerce.catalog_service.adapter.in.rest.dto.request;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.PositiveOrZero;
 
 import java.math.BigDecimal;
 import java.util.UUID;
@@ -13,7 +16,7 @@ import java.util.UUID;
  */
 public record CreateProductRequest(@NotBlank String name,
                                    @NotBlank String description,
-                                   @NotBlank BigDecimal price,
-                                   @NotBlank int stock,
-                                   @NotBlank UUID categoryId) {
+                                   @NotNull @Positive BigDecimal price,
+                                   @PositiveOrZero int stock,
+                                   @NotNull UUID categoryId) {
 }
