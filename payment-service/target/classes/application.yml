@@ -17,10 +17,18 @@ spring:
       hibernate:
         format_sql: true
 
-jwt:
-  secret: ${JWT_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
-  expiration: 86400000
+security:
+  jwt:
+    secret: ${JWT_SECRET:mySuperSecretKey12345678901234567890123456789012}
+  # Token compartido con order-service para POST /orders/{id}/pay (mismo valor en ambos servicios)
+  internal-token: ${INTERNAL_SERVICE_TOKEN:dev-internal-token-change-me}
 
 order:
   service:
     url: ${ORDER_SERVICE_URL:http://localhost:8084}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

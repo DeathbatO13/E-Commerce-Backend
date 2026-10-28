@@ -1,5 +1,7 @@
 E:\User\Daniel Torres\Proyectos\Tienda\E-Commerce-Backend\payment-service\src\main\java\com\e_commerce\payment_service\adapter\in\rest\dto\PaymentResponse.java
 E:\User\Daniel Torres\Proyectos\Tienda\E-Commerce-Backend\payment-service\src\main\java\com\e_commerce\payment_service\adapter\in\rest\dto\ProcessPaymentRequest.java
+E:\User\Daniel Torres\Proyectos\Tienda\E-Commerce-Backend\payment-service\src\main\java\com\e_commerce\payment_service\adapter\in\rest\exception\ErrorResponse.java
+E:\User\Daniel Torres\Proyectos\Tienda\E-Commerce-Backend\payment-service\src\main\java\com\e_commerce\payment_service\adapter\in\rest\exception\GlobalExceptionHandler.java
 E:\User\Daniel Torres\Proyectos\Tienda\E-Commerce-Backend\payment-service\src\main\java\com\e_commerce\payment_service\adapter\in\rest\mapper\PaymentRestMapper.java
 E:\User\Daniel Torres\Proyectos\Tienda\E-Commerce-Backend\payment-service\src\main\java\com\e_commerce\payment_service\adapter\in\rest\PaymentController.java
 E:\User\Daniel Torres\Proyectos\Tienda\E-Commerce-Backend\payment-service\src\main\java\com\e_commerce\payment_service\adapter\out\http\OrderHttpAdapter.java

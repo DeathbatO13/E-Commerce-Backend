@@ -1,6 +1,8 @@
 package com.e_commerce.catalog_service.adapter.in;
 
 import com.e_commerce.catalog_service.adapter.in.rest.CategoryController;
+import com.e_commerce.catalog_service.config.JwtProvider;
+import com.e_commerce.catalog_service.config.SecurityConfig;
 import com.e_commerce.catalog_service.domain.model.Category;
 import com.e_commerce.catalog_service.domain.port.in.CreateCategoryUseCase;
 import com.e_commerce.catalog_service.domain.port.in.DeleteCategoryUseCase;
@@ -9,7 +11,9 @@ import com.e_commerce.catalog_service.domain.port.in.UpdateCategoryUseCase;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -30,6 +34,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * </p>
  */
 @WebMvcTest(CategoryController.class)
+@Import(SecurityConfig.class)
 class CategoryControllerTest {
 
     @Autowired
@@ -47,11 +52,15 @@ class CategoryControllerTest {
     @MockitoBean
     private DeleteCategoryUseCase deleteCategoryUseCase;
 
+    @MockitoBean
+    private JwtProvider jwtProvider;
+
     /**
      * Verifica que al enviar una solicitud POST válida se crea una categoría correctamente
      * y se retorna el estado 200 con los datos esperados en la respuesta JSON.
      */
     @Test
+    @WithMockUser(roles = "ADMIN")
     void shouldCreateCategorySuccessfully() throws Exception {
         Category category = new Category(
                 UUID.randomUUID(),
@@ -91,5 +100,19 @@ class CategoryControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].name").value("Books"))
                 .andExpect(jsonPath("$[0].active").value(true));
+    }
+
+    /**
+     * Verifica que un usuario sin rol ADMIN no puede crear categorías.
+     */
+    @Test
+    @WithMockUser(roles = "CLIENT")
+    void shouldRejectCategoryCreationForClient() throws Exception {
+        mockMvc.perform(post("/categories")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                        { "name": "Books" }
+                    """))
+                .andExpect(status().isForbidden());
     }
 }

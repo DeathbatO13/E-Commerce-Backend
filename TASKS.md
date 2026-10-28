@@ -25,26 +25,27 @@ Antes de empezar, un mini-glosario de términos que vas a ver repetidos:
 
 Estos son los problemas concretos encontrados al revisar el código actual. No son tareas nuevas: son la causa raíz de varias tareas de las fases siguientes, listados aquí para que entiendas el "por qué" cuando llegues a corregirlos.
 
-> **Última revisión: 2026-10-25.** Se compiló y se ejecutó `mvnw test` (JDK 17) en cada servicio:
+> **Última revisión: 2026-10-28**, sobre `develop` actualizado (`f186f28`) más la reparación del merge (ver 0.1). Se ejecutó `mvnw test` (JDK 17) en cada servicio:
 >
-> | Servicio | Compila | Tests | Arranca |
+> | Servicio | Compila | Tests | Notas |
 > |---|---|---|---|
-> | auth-service | ✅ | ✅ 5/5 (requiere Postgres local con `auth_db`) | ✅ |
-> | catalog-service | ✅ | ❌ 5/10 con error | ❌ (falta `security.jwt.secret`) |
-> | cart-service | ✅ | ❌ 3/4 con error | ⚠️ (arranca, pero rechaza todos los tokens) |
-> | order-service | ❌ | — | — |
-> | payment-service | — (sin código fuente) | — | — |
+> | auth-service | ✅ | ✅ 6/6 | requiere Postgres local con `auth_db` |
+> | catalog-service | ✅ | ✅ 12/12 | `contextLoads` usa el perfil `test` (H2) |
+> | cart-service | ✅ | ✅ 5/5 | `contextLoads` todavía requiere Postgres con `cart_db` |
+> | order-service | ✅ | ✅ 9/9 | incluye `contextLoads` contra `order_db` |
+> | payment-service | ✅ | — (sin tests) | |
+>
+> ⚠️ **Corrección del diagnóstico del 25-oct:** se hizo sobre un `develop` local desactualizado (`1ad3395`). `origin/develop` ya tenía commiteado payment-service, la Fase 2 de order y el manejo de errores (`d62e8bf`, `de778d0`, `ef16919`). No se había "perdido" código: solo faltaba sincronizar con `git pull`. Varias tareas marcadas abajo como "recuperadas" ya existían en remoto.
 
-### 0.1 Bloqueantes (impiden que el sistema funcione de punta a punta)
+### 0.1 Bloqueantes
 
-- [ ] **Se perdió el código fuente de `payment-service`**: la carpeta solo contiene `target/` (sin `src/` ni `pom.xml`) y nunca se commiteó. Las clases compiladas muestran que ya existían `Payment`, `PaymentStatus`, `ProcessPaymentUseCase`, `PaymentRepositoryPort`, `GlobalExceptionHandler`, `ErrorResponse`, `application.yml` (con variables de entorno, actuator y `ORDER_SERVICE_URL`) y la migración `V1__init_payment_schema.sql`. Sin este servicio, un pedido nunca puede pasar de `CREATED` a `PAID`.
-- [ ] **`order-service` no compila** (desde el commit `1ad3395`): `OrderService` ahora pide `(OrderRepositoryPort, OrderMapper)`, pero `BeanConfiguration` le pasa un solo argumento. Además, `RestMapper` no es un bean de Spring (`OrderController` no puede inyectarlo) y la lógica de `GET /orders` está comentada, así que siempre devuelve `[]`.
-- [ ] **El secreto JWT no es el mismo entre servicios**, así que ningún token sirve fuera de auth-service:
-  - auth-service firma con `security.jwt.secret` de `application.yml`. Los `application-dev.yml` lo declaran como `spring.jwt.secret` (prefijo equivocado), así que esa clave nunca se lee.
-  - cart-service verifica con `spring.security.jwt.secret`, que tiene un valor distinto: rechaza todos los tokens.
-  - catalog-service y order-service leen `security.jwt.secret`, pero no está definido en ningún perfil: **no arrancan** (`Could not resolve placeholder`).
-- [ ] **cart-service nunca guarda los items**: `CartMapper.toEntity` construye la lista de `CartItemJpaEntity`, pero nunca la asigna a la entidad del carrito.
-- [ ] **`POST /products` siempre responde 500** en catalog-service: `@NotBlank` sobre `BigDecimal`, `int` y `UUID` lanza `UnexpectedTypeException` (`@NotBlank` solo aplica a `String`; para el resto se usa `@NotNull` / `@Positive`).
+- [ ] **`develop` en remoto (`f186f28`) no compila.** Los merges `25eee15` (PR #101) y `c7407ac` (PR #102) se resolvieron conservando *ambos* lados de cada conflicto: beans y constructores duplicados en `BeanConfiguration` y `OrderService`, `<version>` duplicado en `payment-service/pom.xml`, dos claves `security:` en `order-service/application.yaml` y un `=======` suelto en `TASKS.md`. **Reparado en el working tree (28-oct), pendiente de commit**: se tomó la versión coherente de cada archivo, conservando lo que aportaba develop (JWT unificado y el constructor privado de `RestMapper`).
+- [ ] **`payment-service/target/` quedó commiteado** (24 archivos de compilación) a pesar de su `.gitignore`. Sacarlo del índice con `git rm -r --cached payment-service/target`.
+- [x] **El secreto JWT no es el mismo entre servicios**: resuelto en `ef16919`. Los 5 servicios leen `security.jwt.secret` con `${JWT_SECRET:...}` y el mismo valor por defecto.
+- [x] **cart-service nunca guarda los items**: resuelto (`CartMapper.toEntity` agrega los items a la entidad).
+- [x] **`POST /products` siempre responde 500** en catalog-service: `@NotBlank` sobre `BigDecimal`, `int` y `UUID` lanzaba `UnexpectedTypeException`. Resuelto (28-oct) en `CreateProductRequest` y `UpdateProductRequest` con `@NotNull` / `@Positive` / `@PositiveOrZero`; lo cubre `ProductControllerTest.shouldRejectProductWithInvalidPrice`.
+
+> **Cómo evitar que se repita:** al resolver un conflicto, no basta con borrar los marcadores `<<<<<<<` / `=======` / `>>>>>>>`; hay que quedarse con una sola versión de cada bloque. Antes de commitear un merge, compilar (`./mvnw -q compile`) todos los servicios tocados. Esto es justamente lo que automatiza el CI de la Fase 6.
 
 ### 0.2 Diagnóstico original (actualizado)
 
@@ -54,7 +55,7 @@ Estos son los problemas concretos encontrados al revisar el código actual. No s
 - [x] **Typo `"ROLE_ADMMIN"`** en `OrderController`: resuelto. Ojo: el listado sigue roto porque está comentado (ver 0.1).
 - [ ] **Ruta duplicada `/admin/admin/...`** en `UserController` de auth-service, por sumar el path del método al del `@RequestMapping` de clase.
 - [ ] **Listado de usuarios restringido solo a SUPER_ADMIN**, cuando la regla de negocio dice que ADMIN también debería poder listarlos. La restricción está en **dos lugares**: el `@PreAuthorize` de clase y `requestMatchers("/admin/**").hasRole("SUPER_ADMIN")` en `SecurityConfig`.
-- [ ] **No hay manejo global de errores** (`@ControllerAdvice`) en ningún servicio — los errores de dominio se devuelven como 500 genérico en vez de 400/404/409 con un body claro. (payment-service tenía un `GlobalExceptionHandler`, pero se perdió con el resto del código.)
+- [ ] **El manejo global de errores es incompleto**: los 5 servicios tienen `GlobalExceptionHandler`, pero el handler genérico de `Exception` convierte en 500 los 403 (`AccessDeniedException`), los 404 y los errores de `RestClient`. Faltan handlers específicos para devolver 400/403/404/409/502 con un body claro.
 - [ ] **Sin Dockerfile** en cart-service, catalog-service y order-service (solo existe en auth-service, y no es multi-stage). Sin `docker-compose.yml` raíz. Sin `render.yaml`. Sin `.github/workflows`.
 - [ ] **Secrets hardcodeados** (contraseñas de DB, JWT secret, password del super admin) directamente en los `application*.yml`, en vez de venir de variables de entorno — inviable para producción/Render.
 - [ ] **CORS solo configurado en auth-service** — el frontend no podrá llamar a los demás servicios desde el navegador.
@@ -63,7 +64,7 @@ Estos son los problemas concretos encontrados al revisar el código actual. No s
 ### 0.3 Hallazgos nuevos de menor severidad
 
 - [ ] **Hexagonal violada en cart-service**: `Cart` y `CartItem` del dominio tienen `@Entity` sobre las mismas tablas que `CartJpaEntity` / `CartItemJpaEntity`.
-- [ ] **Hexagonal violada en catalog-service**: `ProductController` depende de la clase concreta `CategoryApplicationService` en vez del puerto `ConfirmCategoryExistsUseCase`. Eso, sumado a que los tests no mockean `JwtProvider`, hace fallar los `@WebMvcTest`.
+- [ ] **Hexagonal violada en catalog-service**: `ProductController` depende de la clase concreta `CategoryApplicationService` en vez del puerto `ConfirmCategoryExistsUseCase`. Por ahora `ProductControllerTest` mockea `CategoryApplicationService`; al pasar al puerto, cambiar ese mock.
 - [ ] **Versiones inconsistentes**: Spring Boot 3.5.9 / 3.5.10 / 3.5.11 según el servicio. springdoc 2.3.0 y 2.5.0 no son compatibles con Boot 3.5 (necesita 2.8.x), y cart y order ni siquiera lo incluyen. order-service mezcla `jjwt-impl 0.12.6` con `jjwt-api 0.11.5`.
 - [ ] **Repos git anidados**: cada servicio tiene un `.git` vacío (rama `master` sin commits) que dejó Spring Initializr. Confunde al IDE y a git.
 - [ ] **`.gitignore` raíz**: incluye `TASKS.md`, pero el archivo ya está trackeado (la regla no tiene efecto). También lista `README-TAREAS.md`, que no existe.
@@ -76,20 +77,19 @@ Objetivo: que lo que "ya está hecho" funcione de verdad antes de sumar código 
 
 ### 1.0 Bloqueantes (hacer primero)
 
-- [x] **Recuperar el código de payment-service**: recuperado (25-oct) de la transcripción de Antigravity del 13 y 14 de septiembre (25 archivos). Las 7 clases que había en `target/` coinciden con las recompiladas. Ajustes hechos: jjwt alineado a 0.11.5, se quitó `<source>/<target>21` del pom (el proyecto es Java 17), se usó el `application.yml` más reciente y `JwtProvider` ahora lee `security.jwt.secret`. **Falta commitearlo.** *Causa de la pérdida:* el 14-sep el repo estaba en medio de un `git rebase` (editando `c0d2c85`), y se perdió el trabajo sin commitear.
+- [x] **payment-service completo y coherente**: el servicio ya estaba en `origin/develop` (`d62e8bf`, `de778d0`). En PR #102 se alinearon jjwt a 0.11.5, Java 17 en el pom y `JwtProvider` con `security.jwt.secret`.
 - [ ] **Corregir lo que quedó pendiente en payment-service**:
   - ~~`OrderHttpAdapter` no reenvía el JWT~~: resuelto con el token interno de servicio (`X-Internal-Token`), y el endpoint `/pay` ya existe en order-service.
   - No hay forma de simular un pago `REJECTED`: con `@Positive` en `amount`, todo pago válido se aprueba.
   - No se valida que `amount` coincida con el total del pedido.
   - El parámetro `paymentToken` recibe el header `Authorization` pero no se usa.
   - No tiene tests ni `ReadMe.md`.
-- [x] **Recuperar el trabajo perdido en los otros servicios**: recuperado (25-oct) desde la misma transcripción de Antigravity. Las 44 ediciones se reprodujeron en orden sobre el código actual: todas entraron limpias o ya estaban; las 3 que chocaban las reemplazan versiones posteriores. Se recuperó:
-  - **Fase 1**: `CartMapper` ahora persiste los items, `CatalogHttpAdapter` + `CatalogPort` inyectado en cart, ownership y `OrderResponse` en `GET /orders/{id}`, `GET /orders` descomentado, y en `UserController` la ruta sin `/admin/admin` y `listUsers` para ADMIN.
+- [x] **Fase 1, Fase 2 de order y Fase 3 parcial presentes en `develop`**:
+  - **Fase 1**: `CartMapper` persiste los items, `CatalogHttpAdapter` + `CatalogPort` inyectado en cart, ownership y `OrderResponse` en `GET /orders/{id}`, `GET /orders` funcionando, y en `UserController` la ruta sin `/admin/admin` y `listUsers` para ADMIN.
   - **Fase 2 de order-service**: `CreateOrderRequest` solo con `address`, `CartPort` / `CatalogPort` con sus adaptadores HTTP, precios verificados contra catalog, vaciado del carrito y `POST /orders/{id}/pay` y `/cancel`.
   - **Fase 3 parcial**: `GlobalExceptionHandler` + `ErrorResponse` en los 5 servicios, actuator en los 5 y Flyway en catalog y order.
-
-  Respaldo de los archivos previos en el scratchpad de la sesión de Claude Code del 25-oct (`backup-pre-recovery/`).
-- [ ] **Corregir lo que trajo la recuperación**:
+- [x] **`BeanConfiguration` de order registraba la misma instancia de `OrderService` 5 veces** (un bean más un alias por cada puerto de entrada), así que Spring encontraba "2 beans OrderService" y el contexto no arrancaba. Se dejó un único bean `orderService`; Spring lo inyecta por cualquiera de sus interfaces.
+- [ ] **Pendientes de la Fase 2 / 3 en order, cart y auth**:
   - [x] **`POST /orders/{id}/pay` restringido a payment-service**: `InternalServiceAuthFilter` valida el header `X-Internal-Token` (comparación en tiempo constante) y asigna `ROLE_SERVICE`; `SecurityConfig` exige ese rol en `/orders/*/pay`. CLIENT y ADMIN reciben 403. payment-service envía el header desde `OrderHttpAdapter`. Configuración: `security.internal-token: ${INTERNAL_SERVICE_TOKEN:...}`, con el mismo valor en order y payment. Cubierto por 4 tests en `OrderControllerTest`.
   - [x] **Contrato cart → order alineado**: `CartResponse.item` renombrado a `items`, igual que `CartDto` de order y `cart.yaml`.
   - El `@ExceptionHandler(Exception.class)` genérico de los `GlobalExceptionHandler` convierte en 500 los 403 de `@PreAuthorize` (`AccessDeniedException` / `AuthorizationDeniedException`), los 404 de rutas inexistentes (`NoResourceFoundException`) y los JSON malformados (`HttpMessageNotReadableException`). Hay que agregar handlers específicos o volver a lanzar esas excepciones.
@@ -97,8 +97,8 @@ Objetivo: que lo que "ya está hecho" funcione de verdad antes de sumar código 
   - Flyway en catalog y order sin migraciones: si `catalog_db` / `order_db` ya tienen tablas creadas por `ddl-auto`, Flyway falla con *non-empty schema without history table*. Crear las `V1__` (3.4) o usar `baseline-on-migrate` mientras tanto.
   - `OrderService` (capa de aplicación) importa `CartDto` del adaptador HTTP: mover un modelo equivalente al dominio o a `domain/ports/out`.
   - `listUsers` ya permite ADMIN con `@PreAuthorize`, pero `SecurityConfig` sigue con `/admin/**` → `hasRole("SUPER_ADMIN")` (ver 1.3).
-- [x] **Hacer compilar order-service**: resuelto por la recuperación (`OrderService` ya no depende de `OrderMapper`, y `RestMapper` es estático con `toResponse`). Compila; quedan 2 tests con error que ya existían antes (`@Enumerated` sobre `String` en `OrderEntity` y el mock faltante de `JwtProvider`).
-- [ ] **Unificar la configuración JWT**: usar la misma clave `security.jwt.secret` en los 4 servicios (`${JWT_SECRET:valor-dev}`, ver Fase 3.2) y borrar las variantes `spring.jwt.*` y `spring.security.jwt.*`. *Por qué:* auth-service firma con un secreto y los demás verifican con otro (o con ninguno), así que hoy ningún token es aceptado fuera de auth.
+- [x] **Hacer compilar order-service**: compila y pasa 9/9 tests (incluido `contextLoads`). `@Enumerated` sobre `String` lo quitó `ef16919`, y el mock de `JwtProvider` se agregó en `OrderControllerTest`.
+- [x] **Unificar la configuración JWT**: resuelto en `ef16919` (ver 0.1).
 
 ### 1.1 Order-service
 
@@ -144,21 +144,6 @@ Objetivo: que lo que "ya está hecho" funcione de verdad antes de sumar código 
 - [ ] **Unificar `existsById` de categoría** para que ignore las inactivas, igual que `findById`.
 - [ ] **Códigos HTTP**: `201 Created` en los POST y `204 No Content` en los DELETE.
 - [ ] **Permitir Swagger** (`/swagger-ui/**`, `/v3/api-docs/**`) en `SecurityConfig`.
-=======
-- [x] **Corregir `"ROLE_ADMMIN"` → `"ROLE_ADMIN"`** en `OrderController`.
-- [x] **Agregar validación de "ownership" en `GET /orders/{id}`**: verifica que `order.getUserId()` sea igual al usuario autenticado (retornando 403 Forbidden si no coincide), o que el usuario sea ADMIN/SUPER_ADMIN.
-
-### 1.2 Cart-service
-
-- [x] **Implementar el adaptador HTTP para `CatalogPort`**: se creó `CatalogHttpAdapter` en `adapter/out/http` que consulta `catalog-service` vía `RestClient`.
-- [x] **Inyectar `CatalogPort` correctamente** en `CartApplicationService` (por constructor).
-- [x] **Validar que el producto exista y esté activo** antes de agregarlo al carrito.
-
-### 1.3 Auth-service
-
-- [x] **Corregir la ruta duplicada**: `@PostMapping("/users/{id}/role")` en `UserController`.
-- [x] **Permitir que ADMIN también liste usuarios**: `@PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")` en `listUsers`.
-
 
 ---
 
@@ -168,19 +153,13 @@ Esta es la fase más importante para entender **cómo se comunican los microserv
 
 ### 2.1 Order-service pide el carrito, no lo recibe del cliente
 
-
 - [x] Cambiar `CreateOrderRequest` para que solo reciba `address` (nada de `items`/`total` desde el cliente). *Por qué:* si el precio y los productos vienen del cliente, cualquiera podría manipular el request y comprar algo a $0. El precio siempre se recalcula en el servidor.
 - [x] Crear el puerto de salida `CartPort` en order-service, con un método tipo `getActiveCart(userId)`.
 - [x] Implementar el adaptador HTTP de `CartPort` (llamando a `GET /cart` de cart-service, pasando el JWT del usuario para que cart-service sepa de quién es el carrito).
 - [x] Reusar (o crear) `CatalogPort` en order-service para volver a consultar el precio actual de cada producto al momento de crear el pedido (nunca confiar en el precio que traiga el carrito, por si cambió).
-- [x] Cambiar `CreateOrderRequest` para que solo reciba `address` (nada de `items`/`total` desde el cliente).
-- [x] Crear el puerto de salida `CartPort` en order-service, con métodos `getActiveCart(userId, token)` y `clearCart(userId, token)`.
-- [x] Implementar el adaptador HTTP de `CartPort` (`CartHttpAdapter`) llamando a `GET /cart` y `DELETE /cart` de cart-service pasando el JWT del usuario.
-- [x] Crear `CatalogPort` (`CatalogHttpAdapter`) en order-service para consultar el precio oficial de cada producto al momento de crear el pedido.
 - [x] En el caso de uso `CreateOrder`: obtener el carrito activo → validar que no esté vacío → construir los `OrderItem` con precios verificados → crear el `Order` → llamar a cart-service para **vaciar el carrito** una vez creado el pedido.
 
 ### 2.2 Endpoints de transición de estado
-
 
 - [x] `POST /orders/{id}/pay` — pensado para ser llamado por payment-service cuando el pago es aprobado. Usa el método `order.markAsPaid()` que ya existe en el dominio.
 - [x] `POST /orders/{id}/cancel` — usa `order.cancel()`, ya existente, que valida que el pedido no esté `PAID`.
@@ -197,19 +176,6 @@ Esta es la fase más importante para entender **cómo se comunican los microserv
 - [ ] Definir en `payment.yaml` cómo forzar un pago rechazado (por ejemplo, un campo `simulateResult: APPROVED | REJECTED`) y las respuestas de error (400/404/409).
 
 > Nota: varias de estas piezas ya existieron (dominio, puertos, handler de errores, migración, `application.yml`) y se perdieron. Ver la tarea de recuperación en 1.0.
-
-- [x] `POST /orders/{id}/pay` — invocado por payment-service cuando el pago es aprobado; ejecuta `order.markAsPaid()`.
-- [x] `POST /orders/{id}/cancel` — ejecuta `order.cancel()`, validando ownership y que el pedido no esté `PAID`.
-
-### 2.3 Payment-service (microservicio nuevo)
-
-- [x] Crear el módulo `payment-service/` en el puerto `8085` replicando la estructura hexagonal de los demás servicios (`domain/model`, `domain/port/in|out`, `application/service`, `adapter/in/rest`, `adapter/out/persistence`, `adapter/out/http`, `config`).
-- [x] Modelo de dominio `Payment` (id, orderId, amount, status `APPROVED`/`REJECTED`, transactionId, fecha).
-- [x] Caso de uso `ProcessPaymentUseCase`: procesa el intento de pago mockeado.
-- [x] Endpoint `POST /payments/process`, protegido con JWT.
-- [x] Cuando el pago se aprueba: `payment-service` llama a `POST /orders/{id}/pay` en order-service mediante `OrderHttpAdapter`.
-- [x] Persistir cada intento de pago en la base de datos `payment_db` (tabla `payments`, con migración Flyway `V1__init_payment_schema.sql`).
-- [x] Archivo `application.yml` configurado en el puerto 8085.
 
 ---
 
@@ -251,12 +217,13 @@ Esta es la fase más importante para entender **cómo se comunican los microserv
 
 ## Fase 4 — Testing
 
-Con ~25 tests en todo el repo, casi todos "happy path" sobre controllers, falta cobertura real en varias capas. Además, **hoy solo pasan los de auth-service** (ver la tabla de la Fase 0).
+Con ~25 tests en todo el repo, casi todos "happy path" sobre controllers, falta cobertura real en varias capas. Desde el 28-oct pasan todos los tests existentes de los 5 servicios (ver la tabla de la Fase 0).
 
-- [ ] **Hacer pasar los tests existentes primero**:
-  - En los `@WebMvcTest` de catalog y cart, agregar `@MockitoBean JwtProvider` (como ya hace `AuthControllerTest`) o excluir los filtros con `@AutoConfigureMockMvc(addFilters = false)`.
-  - Agregar `@ActiveProfiles("test")` a los `@SpringBootTest` (`contextLoads`): hoy cargan el perfil `dev` y necesitan un Postgres real. Agregar H2 en el scope de test de cart-service, que no lo tiene.
-  - Corregir `CartControllerTest.shouldUpdateProductToCart`, que hace `POST` en vez de `PUT`.
+- [x] **Hacer pasar los tests existentes primero** (28-oct):
+  - Los `@WebMvcTest` de catalog y cart importan su `SecurityConfig` real y mockean `JwtProvider`, así que también prueban las reglas de acceso (se agregaron casos 403 para CLIENT y sin autenticación). Se agregó `spring-security-test` a catalog.
+  - `CartControllerTest` reescrito: autentica con `user(userId)` (el controller lee el userId de `Authentication`, no de un atributo del request), ya no mockea el DTO `AddItemRequest` y el test de actualización usa `PUT /cart/items/{productId}`.
+  - `CatalogServiceApplicationTests` usa `@ActiveProfiles("test")` (H2).
+- [ ] **`contextLoads` de cart sin Postgres**: agregar H2 en scope test a cart-service y `@ActiveProfiles("test")` en `CartServiceApplicationTests`. (Order y auth también dependen de Postgres local.)
 
 - [ ] **Tests de dominio puro** (clases `Order`, `Cart`, `User`, `Product`, sin Spring): probar transiciones de estado inválidas (pagar un pedido cancelado, agregar cantidad negativa, etc.) y las invariantes del constructor.
 - [ ] **Tests de casos de uso** con los puertos de salida mockeados (Mockito): `CartApplicationServiceTest` no existe hoy y es el más urgente, porque ahí vive el bug del `CatalogPort` nulo.
