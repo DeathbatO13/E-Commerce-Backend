@@ -1,22 +1,13 @@
 package com.e_commerce.cart_service.domain.model;
 
-import jakarta.persistence.*;
+import com.e_commerce.cart_service.domain.exception.ResourceNotFoundException;
 
 import java.math.BigDecimal;
 import java.util.*;
 
-
-@Entity
-@Table(name = "carts")
 public class Cart{
 
-    @Id
     private UUID id;
-    @OneToMany(
-            mappedBy = "cart",
-            cascade = CascadeType.ALL,
-            orphanRemoval = true
-    )
     private List<CartItem> items;
     private UUID userId;
 
@@ -27,7 +18,8 @@ public class Cart{
         this.totalPrice = totalPrice;
         this.id = id;
         this.userId = userId;
-        this.items = items;
+        // Copia mutable: addProduct / removeProduct / clear modifican la lista
+        this.items = items != null ? new ArrayList<>(items) : new ArrayList<>();
     }
 
     public Cart(UUID userId) {
@@ -36,8 +28,6 @@ public class Cart{
         this.items = new ArrayList<>();
         this.totalPrice = BigDecimal.ZERO;
     }
-
-    public Cart(){}
 
     public UUID getId() {
         return id;
@@ -48,7 +38,7 @@ public class Cart{
     }
 
     public List<CartItem> getItems() {
-        return items;
+        return Collections.unmodifiableList(items);
     }
 
     public BigDecimal getTotalPrice() {
@@ -88,7 +78,7 @@ public class Cart{
     public void updateQuantity(UUID productId, int quantity){
 
         CartItem item = findItem(productId)
-                .orElseThrow(() -> new NoSuchElementException("Product not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Product not found in cart: " + productId));
 
         if (quantity <= 0) {
             items.remove(item);

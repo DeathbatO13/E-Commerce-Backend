@@ -1,23 +1,13 @@
 package com.e_commerce.cart_service.domain.model;
 
-import jakarta.persistence.*;
-
 import java.math.BigDecimal;
 import java.util.UUID;
 
-
-@Entity
-@Table(name = "cart_items")
 public class CartItem {
 
-    @Id
     private UUID id;
-    @ManyToOne
-    @JoinColumn(name = "cart_id")
-    private Cart cart;
     private UUID productId;
-    private
-    BigDecimal price;
+    private BigDecimal price;
     private int quantity;
 
     public CartItem(UUID id, UUID productId, BigDecimal price, int quantity) {
@@ -29,9 +19,6 @@ public class CartItem {
         this.productId = productId;
         this.price = price;
         this.quantity = quantity;
-    }
-
-    public CartItem(){
     }
 
     public UUID getId() {

@@ -7,6 +7,7 @@ import com.e_commerce.cart_service.adapter.in.rest.dto.response.CartResponse;
 import com.e_commerce.cart_service.adapter.in.rest.mapper.CartRestMapper;
 import com.e_commerce.cart_service.domain.model.Cart;
 import com.e_commerce.cart_service.domain.port.in.*;
+import jakarta.validation.Valid;
 import org.springframework.security.core.Authentication;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
@@ -65,7 +66,7 @@ public class CartController {
 
     @PostMapping("/items")
     public CartResponse addItem(
-            @RequestBody AddItemRequest request,
+            @Valid @RequestBody AddItemRequest request,
             Authentication authentication
     ) {
 
@@ -74,7 +75,6 @@ public class CartController {
         Cart cart = addProductUseCase.addProduct(
                 userId,
                 request.productId(),
-                request.price(),
                 request.quantity()
         );
 
@@ -84,7 +84,7 @@ public class CartController {
     @PutMapping("/items/{productId}")
     public CartResponse updateItem(
             @PathVariable UUID productId,
-            @RequestBody UpdateItemRequest request,
+            @Valid @RequestBody UpdateItemRequest request,
             Authentication authentication
     ) {
 

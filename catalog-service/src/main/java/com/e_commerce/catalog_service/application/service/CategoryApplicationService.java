@@ -1,5 +1,6 @@
 package com.e_commerce.catalog_service.application.service;
 
+import com.e_commerce.catalog_service.domain.exception.ResourceNotFoundException;
 import com.e_commerce.catalog_service.domain.model.Category;
 import com.e_commerce.catalog_service.domain.port.in.*;
 import com.e_commerce.catalog_service.domain.port.out.CategoryRepository;
@@ -38,7 +39,7 @@ public class CategoryApplicationService implements CreateCategoryUseCase,
     @Override
     public Category create(String name) {
         if (categoryRepository.findByName(name).isPresent()) {
-            throw new IllegalArgumentException("Category already exists");
+            throw new IllegalStateException("Category already exists");
         }
         return categoryRepository.save(
                 new Category(UUID.randomUUID(), name, true));
@@ -75,7 +76,7 @@ public class CategoryApplicationService implements CreateCategoryUseCase,
     @Override
     public Category update(UUID uuid, String name) {
         Category category = categoryRepository.findById(uuid)
-                .orElseThrow(() -> new IllegalArgumentException("Category not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Category not found"));
 
         category.setName(name);
         return categoryRepository.save(category);

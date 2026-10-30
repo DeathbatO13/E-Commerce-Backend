@@ -46,6 +46,7 @@ public class CartMapper {
                         item.getQuantity()
                 )).toList();
 
+        // Cart copia la lista, así que el resultado inmutable de toList() no impide modificarlo
         return new Cart(
                 entity.getTotalPrice(),
                 entity.getId(),

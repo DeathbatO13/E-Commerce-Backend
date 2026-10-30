@@ -11,6 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.http.MediaType;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.test.context.bean.override.mockito.MockitoBean; // Solo para Spring Boot 3.4+
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -118,5 +119,51 @@ public class AuthControllerTest {
                 )
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.accessToken").value("fake-token"));
+    }
+
+    /**
+     * Verifica que credenciales inválidas respondan 401 con el cuerpo de error estándar.
+     */
+    @Test
+    void loginConCredencialesInvalidasDebeResponder401() throws Exception {
+        when(loginUseCase.login(anyString(), anyString()))
+                .thenThrow(new BadCredentialsException("Invalid credentials"));
+
+        mockMvc.perform(
+                        post("/auth/login")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("""
+                            {
+                              "email": "test@mail.com",
+                              "password": "wrong"
+                            }
+                        """)
+                )
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.status").value(401))
+                .andExpect(jsonPath("$.message").value("Invalid credentials"));
+    }
+
+    /**
+     * Verifica que registrar un email ya existente responda 409.
+     */
+    @Test
+    void registroConEmailExistenteDebeResponder409() throws Exception {
+        when(registerUserUseCase.register(anyString(), anyString(), anyString()))
+                .thenThrow(new IllegalStateException("Email already registered"));
+
+        mockMvc.perform(
+                        post("/auth/register")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("""
+                            {
+                              "email": "test@mail.com",
+                              "password": "123456",
+                              "fullname":"Administrator"
+                            }
+                        """)
+                )
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value("Email already registered"));
     }
 }

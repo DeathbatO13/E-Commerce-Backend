@@ -6,6 +6,7 @@ import com.e_commerce.cart_service.adapter.out.persistence.repository.CartJpaRep
 import com.e_commerce.cart_service.domain.model.Cart;
 import com.e_commerce.cart_service.domain.port.out.CartRepository;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -21,6 +22,7 @@ public class CartPersistenceAdapter implements CartRepository {
 
 
     @Override
+    @Transactional
     public Cart save(Cart cart) {
 
         CartJpaEntity saved = cartJpaRepository.save(CartMapper.toEntity(cart));
@@ -41,8 +43,9 @@ public class CartPersistenceAdapter implements CartRepository {
     }
 
     @Override
+    @Transactional
     public void deleteByUserId(UUID userId) {
 
-        cartJpaRepository.deleteById(userId);
+        cartJpaRepository.deleteByUserId(userId);
     }
 }

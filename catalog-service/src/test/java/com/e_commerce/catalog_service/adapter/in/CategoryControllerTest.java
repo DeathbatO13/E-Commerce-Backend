@@ -115,4 +115,22 @@ class CategoryControllerTest {
                     """))
                 .andExpect(status().isForbidden());
     }
+
+    /**
+     * Verifica que crear una categoría con un nombre existente responde 409.
+     */
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void shouldReturn409WhenCategoryAlreadyExists() throws Exception {
+        when(createCategoryUseCase.create("Books"))
+                .thenThrow(new IllegalStateException("Category already exists"));
+
+        mockMvc.perform(post("/categories")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                        { "name": "Books" }
+                    """))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value("Category already exists"));
+    }
 }

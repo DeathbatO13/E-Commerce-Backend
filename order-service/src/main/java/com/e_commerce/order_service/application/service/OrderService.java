@@ -1,5 +1,6 @@
 package com.e_commerce.order_service.application.service;
 
+import com.e_commerce.order_service.domain.exception.ResourceNotFoundException;
 import com.e_commerce.order_service.adapter.out.http.dto.CartDto;
 import com.e_commerce.order_service.domain.model.Order;
 import com.e_commerce.order_service.domain.model.OrderItem;
@@ -64,7 +65,7 @@ public class OrderService implements CreateOrderUseCase, GetOrderUseCase, PayOrd
     @Override
     public void payOrder(UUID orderId) {
         Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new IllegalArgumentException("Order not found: " + orderId));
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found: " + orderId));
         order.markAsPaid();
         orderRepository.save(order);
     }
@@ -72,7 +73,7 @@ public class OrderService implements CreateOrderUseCase, GetOrderUseCase, PayOrd
     @Override
     public void cancelOrder(UUID orderId) {
         Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new IllegalArgumentException("Order not found: " + orderId));
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found: " + orderId));
         order.cancel();
         orderRepository.save(order);
     }

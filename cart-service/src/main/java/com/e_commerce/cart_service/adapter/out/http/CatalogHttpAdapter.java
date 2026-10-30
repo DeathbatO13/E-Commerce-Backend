@@ -1,5 +1,7 @@
 package com.e_commerce.cart_service.adapter.out.http;
 
+import org.springframework.http.HttpStatus;
+import com.e_commerce.cart_service.domain.exception.ResourceNotFoundException;
 import com.e_commerce.cart_service.adapter.in.rest.dto.response.ProductResponse;
 import com.e_commerce.cart_service.domain.port.out.CatalogPort;
 import org.springframework.beans.factory.annotation.Value;
@@ -25,10 +27,13 @@ public class CatalogHttpAdapter implements CatalogPort {
         ProductResponse product = restClient.get()
                 .uri("/products/{id}", productId)
                 .retrieve()
+                .onStatus(status -> status.isSameCodeAs(HttpStatus.NOT_FOUND), (request, response) -> {
+                    throw new ResourceNotFoundException("Product not found or inactive: " + productId);
+                })
                 .body(ProductResponse.class);
 
         if (product == null || !product.active()) {
-            throw new IllegalArgumentException("Product not found or inactive: " + productId);
+            throw new ResourceNotFoundException("Product not found or inactive: " + productId);
         }
 
         return product.price();

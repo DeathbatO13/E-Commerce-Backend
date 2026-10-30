@@ -3,6 +3,7 @@ package com.e_commerce.order_service.adapter.in.rest;
 import com.e_commerce.order_service.adapter.in.rest.dto.request.CreateOrderRequest;
 import com.e_commerce.order_service.adapter.in.rest.dto.response.OrderResponse;
 import com.e_commerce.order_service.adapter.in.rest.mapper.RestMapper;
+import com.e_commerce.order_service.domain.exception.ResourceNotFoundException;
 import com.e_commerce.order_service.domain.model.Order;
 import com.e_commerce.order_service.domain.ports.in.CancelOrderUseCase;
 import com.e_commerce.order_service.domain.ports.in.CreateOrderUseCase;
@@ -10,6 +11,7 @@ import com.e_commerce.order_service.domain.ports.in.GetOrderUseCase;
 import com.e_commerce.order_service.domain.ports.in.PayOrderUseCase;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
@@ -65,20 +67,7 @@ public class OrderController {
             @PathVariable UUID id,
             Authentication authentication) {
 
-        UUID currentUserId = UUID.fromString(authentication.getName());
-        boolean isAdmin = authentication.getAuthorities().stream()
-                .anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN")
-                        || auth.getAuthority().equals("ROLE_SUPER_ADMIN"));
-
-        var orderOpt = getOrderUseCase.getOrderById(id);
-        if (orderOpt.isEmpty()) {
-            return ResponseEntity.notFound().build();
-        }
-
-        Order order = orderOpt.get();
-        if (!isAdmin && !order.getUserId().equals(currentUserId)) {
-            return ResponseEntity.status(403).build();
-        }
+        findOwnedOrder(id, authentication);
 
         cancelOrderUseCase.cancelOrder(id);
         return ResponseEntity.ok().build();
@@ -90,12 +79,8 @@ public class OrderController {
 
         UUID userId = UUID.fromString(authentication.getName());
 
-        boolean isAdmin = authentication.getAuthorities().stream()
-                .anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN")
-                        || auth.getAuthority().equals("ROLE_SUPER_ADMIN"));
-
         List<Order> orders;
-        if (isAdmin) {
+        if (isAdmin(authentication)) {
             orders = getOrderUseCase.getAllOrders();
         } else {
             orders = getOrderUseCase.getOrderByUser(userId);
@@ -113,18 +98,27 @@ public class OrderController {
             @PathVariable UUID id,
             Authentication authentication) {
 
+        return ResponseEntity.ok(RestMapper.toResponse(findOwnedOrder(id, authentication)));
+    }
+
+    /**
+     * Busca el pedido y verifica que pertenezca al usuario autenticado (ADMIN y SUPER_ADMIN ven todos).
+     * GlobalExceptionHandler traduce las excepciones a 404 y 403.
+     */
+    private Order findOwnedOrder(UUID id, Authentication authentication) {
+        Order order = getOrderUseCase.getOrderById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found: " + id));
+
         UUID currentUserId = UUID.fromString(authentication.getName());
-        boolean isAdmin = authentication.getAuthorities().stream()
+        if (!isAdmin(authentication) && !order.getUserId().equals(currentUserId)) {
+            throw new AccessDeniedException("Order " + id + " belongs to another user");
+        }
+        return order;
+    }
+
+    private static boolean isAdmin(Authentication authentication) {
+        return authentication.getAuthorities().stream()
                 .anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN")
                         || auth.getAuthority().equals("ROLE_SUPER_ADMIN"));
-
-        return getOrderUseCase.getOrderById(id)
-                .map(order -> {
-                    if (!isAdmin && !order.getUserId().equals(currentUserId)) {
-                        return ResponseEntity.status(403).<OrderResponse>build();
-                    }
-                    return ResponseEntity.ok(RestMapper.toResponse(order));
-                })
-                .orElse(ResponseEntity.notFound().build());
     }
 }

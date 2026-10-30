@@ -1,11 +1,15 @@
 package com.e_commerce.cart_service.adapter.in.rest.dto.request;
 
-import java.math.BigDecimal;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
+
 import java.util.UUID;
 
+/**
+ * El precio no se recibe del cliente: CartApplicationService lo consulta a catalog-service.
+ */
 public record AddItemRequest(
-        UUID productId,
-        BigDecimal price,
-        int quantity
+        @NotNull UUID productId,
+        @Positive int quantity
 ) {
 }

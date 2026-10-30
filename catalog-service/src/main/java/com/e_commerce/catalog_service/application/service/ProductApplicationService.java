@@ -1,5 +1,6 @@
 package com.e_commerce.catalog_service.application.service;
 
+import com.e_commerce.catalog_service.domain.exception.ResourceNotFoundException;
 import com.e_commerce.catalog_service.domain.model.Product;
 import com.e_commerce.catalog_service.domain.port.in.*;
 import com.e_commerce.catalog_service.domain.port.out.CategoryRepository;
@@ -42,7 +43,7 @@ public class ProductApplicationService implements
     @Override
     public Product create(Product product) {
         if (!categoryRepository.findById(product.getCategory().getId()).isPresent()) {
-            throw new IllegalArgumentException("Category not found");
+            throw new ResourceNotFoundException("Category not found");
         }
         return productRepository.save(product);
     }
@@ -121,6 +122,6 @@ public class ProductApplicationService implements
     @Override
     public Product getById(UUID uuid) {
         return productRepository.findById(uuid)
-                .orElseThrow(() -> new IllegalArgumentException("Product not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Product not found"));
     }
 }
