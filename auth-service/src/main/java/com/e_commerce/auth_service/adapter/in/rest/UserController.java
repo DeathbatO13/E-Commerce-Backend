@@ -39,9 +39,7 @@ public class UserController {
     public ResponseEntity<Void> changeRole(
             @PathVariable UUID id,
             @RequestParam Role role) {
-        if (role == Role.SUPER_ADMIN) {
-            throw new IllegalArgumentException("SUPER_ADMIN no puede asignarse");
-        }
+        // User.changeRole rechaza asignar SUPER_ADMIN y cambiar el rol del SUPER_ADMIN
         changeUserRoleUseCase.changeUserRole(id, role.toString());
         return ResponseEntity.ok().build();
     }

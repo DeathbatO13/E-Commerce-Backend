@@ -70,7 +70,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/auth/**", "/swagger-ui/**", "/v3/api-docs/**")
                         .permitAll()
-                        .requestMatchers("/admin/**").hasRole("SUPER_ADMIN")
+                        // changeRole exige además SUPER_ADMIN con @PreAuthorize en UserController
+                        .requestMatchers("/admin/**").hasAnyRole("ADMIN", "SUPER_ADMIN")
                         .requestMatchers("/user/**").hasAnyRole("ADMIN", "CLIENT")
                         .anyRequest().authenticated()
                 )

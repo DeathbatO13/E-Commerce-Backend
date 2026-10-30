@@ -1,5 +1,6 @@
 package com.e_commerce.auth_service.userTest;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import com.e_commerce.auth_service.domain.model.Role;
 import com.e_commerce.auth_service.domain.model.User;
 import org.junit.jupiter.api.Test;
@@ -42,5 +43,30 @@ public class UserTest {
 
         assertEquals("test@test.com", user.getEmail());
         assertTrue(user.isEnabled());
+    }
+
+    @Test
+    void cambiarRolReemplazaElRolActual() {
+        User user = new User(UUID.randomUUID(), "c@test.com", "hash", "Cliente", Set.of(Role.CLIENT), true);
+
+        user.changeRole(Role.ADMIN);
+
+        assertEquals(Set.of(Role.ADMIN), user.getRoles());
+    }
+
+    @Test
+    void noSePuedeAsignarSuperAdmin() {
+        User user = new User(UUID.randomUUID(), "c@test.com", "hash", "Cliente", Set.of(Role.CLIENT), true);
+
+        assertThrows(IllegalArgumentException.class, () -> user.changeRole(Role.SUPER_ADMIN));
+        assertEquals(Set.of(Role.CLIENT), user.getRoles());
+    }
+
+    @Test
+    void elSuperAdminNoPuedePerderSuRol() {
+        User superAdmin = new User(UUID.randomUUID(), "a@test.com", "hash", "Admin", Set.of(Role.SUPER_ADMIN), true);
+
+        assertThrows(IllegalStateException.class, () -> superAdmin.changeRole(Role.CLIENT));
+        assertTrue(superAdmin.isSuperAdmin());
     }
 }

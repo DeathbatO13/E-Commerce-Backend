@@ -1,6 +1,7 @@
 package com.e_commerce.auth_service.application.service;
 
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.DisabledException;
 import com.e_commerce.auth_service.domain.exception.ResourceNotFoundException;
 import com.e_commerce.auth_service.domain.model.Role;
 import com.e_commerce.auth_service.domain.model.User;
@@ -56,7 +57,8 @@ public class AuthApplicationService implements LoginUseCase,
      * @param email        correo electrónico del usuario
      * @param rawPassword  contraseña en texto plano proporcionada por el cliente
      * @return token JWT válido para autenticación en la API
-     * @throws IllegalArgumentException si las credenciales son inválidas
+     * @throws BadCredentialsException si las credenciales son inválidas (401)
+     * @throws DisabledException       si el usuario está deshabilitado (401)
      */
     @Override
     public String login(String email, String rawPassword) {
@@ -65,6 +67,11 @@ public class AuthApplicationService implements LoginUseCase,
 
         if (!passwordEncoder.matches(rawPassword, user.getPassword())) {
             throw new BadCredentialsException("Invalid credentials");
+        }
+
+        // Se verifica después de la contraseña para no revelar qué cuentas existen
+        if (!user.isEnabled()) {
+            throw new DisabledException("User is disabled");
         }
 
         return tokenGenerator.generateToken(user);
@@ -82,7 +89,7 @@ public class AuthApplicationService implements LoginUseCase,
      * @param rawPassword contraseña en texto plano
      * @param fullname    nombre completo del usuario
      * @return el usuario recién creado y persistido
-     * @throws IllegalArgumentException si el email ya está registrado
+     * @throws IllegalStateException si el email ya está registrado (409)
      */
     @Override
     public User register(String email, String rawPassword, String fullname){
@@ -120,7 +127,7 @@ public class AuthApplicationService implements LoginUseCase,
             throw new IllegalArgumentException("Invalid role");
         }
 
-        user.setRoles(Set.of(newRole));
+        user.changeRole(newRole);
         userRepository.save(user);
     }
 }

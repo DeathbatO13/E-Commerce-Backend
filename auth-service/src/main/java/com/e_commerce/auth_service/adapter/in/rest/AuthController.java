@@ -8,6 +8,7 @@ import com.e_commerce.auth_service.domain.model.User;
 import com.e_commerce.auth_service.domain.port.in.LoginUseCase;
 import com.e_commerce.auth_service.domain.port.in.RegisterUserUseCase;
 import jakarta.validation.Valid;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
@@ -26,16 +27,20 @@ public class AuthController{
 
     private final RegisterUserUseCase registerUserUseCase;
     private final LoginUseCase loginUseCase;
+    private final long expirationSeconds;
 
     /**
      * Constructor con inyección de dependencias de los casos de uso.
      *
      * @param registerUserUseCase caso de uso para registrar usuarios
      * @param loginUseCase        caso de uso para autenticar usuarios
+     * @param expirationMillis    vigencia del token (security.jwt.expiration, en milisegundos)
      */
-    public AuthController(RegisterUserUseCase registerUserUseCase, LoginUseCase loginUseCase){
+    public AuthController(RegisterUserUseCase registerUserUseCase, LoginUseCase loginUseCase,
+                          @Value("${security.jwt.expiration}") long expirationMillis){
         this.registerUserUseCase = registerUserUseCase;
         this.loginUseCase = loginUseCase;
+        this.expirationSeconds = expirationMillis / 1000;
     }
 
     /**
@@ -81,6 +86,6 @@ public class AuthController{
                 request.password()
         );
 
-        return new LoginResponse(token, "Bearer", 3600);
+        return new LoginResponse(token, "Bearer", expirationSeconds);
     }
 }
