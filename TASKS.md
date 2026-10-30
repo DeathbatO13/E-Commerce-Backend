@@ -29,7 +29,7 @@ Estos son los problemas concretos encontrados al revisar el código actual. No s
 >
 > | Servicio | Compila | Tests | Notas |
 > |---|---|---|---|
-> | auth-service | ✅ | ✅ 8/8 | requiere Postgres local con `auth_db` |
+> | auth-service | ✅ | ✅ 20/20 | requiere Postgres local con `auth_db` |
 > | catalog-service | ✅ | ✅ 15/15 | `contextLoads` usa el perfil `test` (H2) |
 > | cart-service | ✅ | ✅ 14/14 | `contextLoads` y `@DataJpaTest` usan el perfil `test` (H2) |
 > | order-service | ✅ | ✅ 15/15 | incluye `contextLoads` contra `order_db` |
@@ -53,8 +53,8 @@ Estos son los problemas concretos encontrados al revisar el código actual. No s
 - [ ] **Order-service no crea pedidos desde el carrito**: hoy el cliente manda `items` y `total` directamente en el request, lo cual contradice la regla de negocio "un pedido solo puede crearse a partir de un carrito activo" y permitiría a cualquier usuario inventar precios.
 - [x] **Paquetes duplicados en order-service**: resuelto (se eliminó `order_service.persistence.*`, conservando únicamente `adapter.out.persistence.*`).
 - [x] **Typo `"ROLE_ADMMIN"`** en `OrderController`: resuelto. Ojo: el listado sigue roto porque está comentado (ver 0.1).
-- [ ] **Ruta duplicada `/admin/admin/...`** en `UserController` de auth-service, por sumar el path del método al del `@RequestMapping` de clase.
-- [ ] **Listado de usuarios restringido solo a SUPER_ADMIN**, cuando la regla de negocio dice que ADMIN también debería poder listarlos. La restricción está en **dos lugares**: el `@PreAuthorize` de clase y `requestMatchers("/admin/**").hasRole("SUPER_ADMIN")` en `SecurityConfig`.
+- [x] **Ruta duplicada `/admin/admin/...`** en `UserController` de auth-service, por sumar el path del método al del `@RequestMapping` de clase.
+- [x] **Listado de usuarios restringido solo a SUPER_ADMIN** (resuelto el 29-oct, ver 1.3), cuando la regla de negocio dice que ADMIN también debería poder listarlos. La restricción está en **dos lugares**: el `@PreAuthorize` de clase y `requestMatchers("/admin/**").hasRole("SUPER_ADMIN")` en `SecurityConfig`.
 - [x] **El manejo global de errores es incompleto**: resuelto (28-oct), ver 3.1.
 - [ ] **Sin Dockerfile** en cart-service, catalog-service y order-service (solo existe en auth-service, y no es multi-stage). Sin `docker-compose.yml` raíz. Sin `render.yaml`. Sin `.github/workflows`.
 - [ ] **Secrets hardcodeados** (contraseñas de DB, JWT secret, password del super admin) directamente en los `application*.yml`, en vez de venir de variables de entorno — inviable para producción/Render.
@@ -95,7 +95,7 @@ Objetivo: que lo que "ya está hecho" funcione de verdad antes de sumar código 
   - ~~El handler genérico convertía en 500 los 403, los 404, los JSON malformados y los errores de `RestClient`~~: resuelto (28-oct), ver 3.1.
   - Flyway en catalog y order sin migraciones: si `catalog_db` / `order_db` ya tienen tablas creadas por `ddl-auto`, Flyway falla con *non-empty schema without history table*. Crear las `V1__` (3.4) o usar `baseline-on-migrate` mientras tanto.
   - `OrderService` (capa de aplicación) importa `CartDto` del adaptador HTTP: mover un modelo equivalente al dominio o a `domain/ports/out`.
-  - `listUsers` ya permite ADMIN con `@PreAuthorize`, pero `SecurityConfig` sigue con `/admin/**` → `hasRole("SUPER_ADMIN")` (ver 1.3).
+  - ~~`SecurityConfig` de auth bloqueaba a ADMIN en `/admin/**`~~: resuelto (29-oct), ver 1.3.
 - [x] **Hacer compilar order-service**: compila y pasa 9/9 tests (incluido `contextLoads`). `@Enumerated` sobre `String` lo quitó `ef16919`, y el mock de `JwtProvider` se agregó en `OrderControllerTest`.
 - [x] **Unificar la configuración JWT**: resuelto en `ef16919` (ver 0.1).
 
@@ -128,12 +128,12 @@ Objetivo: que lo que "ya está hecho" funcione de verdad antes de sumar código 
 ### 1.3 Auth-service
 
 - [x] **Corregir la ruta duplicada**: dejar `@PostMapping("/users/{id}/role")` (sin repetir `/admin`, porque ya está en el `@RequestMapping` de la clase).
-- [ ] **Permitir que ADMIN también liste usuarios**: mover el `@PreAuthorize("hasRole('SUPER_ADMIN')")` del nivel de clase al método `changeRole` únicamente, dejando `listUsers` accesible para ADMIN y SUPER_ADMIN (✅ hecho en `UserController`). **Falta**, cambiar en `SecurityConfig` `requestMatchers("/admin/**").hasRole("SUPER_ADMIN")` por `hasAnyRole("ADMIN", "SUPER_ADMIN")`; si no, el filtro sigue bloqueando a ADMIN antes de llegar al `@PreAuthorize`.
-- [ ] **Proteger al SUPER_ADMIN**: hoy `changeUserRole` permite quitarle el rol (regla 1.2: "no puede perder su rol"). Rechazar el cambio si el usuario destino es SUPER_ADMIN, idealmente con una validación en el dominio (`User`).
-- [ ] **Rechazar el login de usuarios deshabilitados** (`enabled = false`): hoy no se verifica.
+- [x] **Permitir que ADMIN también liste usuarios** (29-oct): `SecurityConfig` usa `hasAnyRole("ADMIN", "SUPER_ADMIN")` en `/admin/**` y `changeRole` sigue exigiendo SUPER_ADMIN con `@PreAuthorize`; lo cubre `UserControllerTest`. Antes: mover el `@PreAuthorize("hasRole('SUPER_ADMIN')")` del nivel de clase al método `changeRole` únicamente, dejando `listUsers` accesible para ADMIN y SUPER_ADMIN (✅ hecho en `UserController`). **Falta**, cambiar en `SecurityConfig` `requestMatchers("/admin/**").hasRole("SUPER_ADMIN")` por `hasAnyRole("ADMIN", "SUPER_ADMIN")`; si no, el filtro sigue bloqueando a ADMIN antes de llegar al `@PreAuthorize`.
+- [x] **Proteger al SUPER_ADMIN** (29-oct): `User.changeRole` (reemplaza al `@Setter` de Lombok) rechaza asignar SUPER_ADMIN (400) y cambiar el rol de un SUPER_ADMIN (409). La validación salió del controller.
+- [x] **Rechazar el login de usuarios deshabilitados** (29-oct): `DisabledException` → 401. Se verifica después de la contraseña, para no revelar qué cuentas existen.
 - [ ] **Corregir la migración y activar Flyway**: agregar `fullname` y alinear la tabla de roles con la entidad (`@CollectionTable(name = "user_roles", joinColumns = @JoinColumn(name = "user_id"))` + `@Column(name = "role")`). Quitar `@Enumerated` de `Set<String> roles`.
-- [ ] **Limpieza**: eliminar el `PasswordEncoder` duplicado (`SecuriryBeansConfig`, que además tiene un typo en el nombre, o el adaptador), borrar `JwtProvider.extractUserId` / `extractEmail` (leen claims que no existen) y reemplazar `System.err` por un logger (SLF4J). Esta limpieza aplica también al `JwtProvider` de los otros servicios.
-- [ ] **`LoginResponse.expiresIn`** tiene `3600` hardcodeado: leerlo de `security.jwt.expiration`.
+- [x] **Limpieza** (29-oct): se borró `SecuriryBeansConfig` (nadie usaba ese bean; el hash lo hace `BCryptPasswordEncoderAdapter`), se quitaron `extractUserId` / `extractEmail` de auth, cart y order, y los `JwtProvider` de los 4 servicios usan SLF4J (`debug` para tokens expirados, `warn` para el resto). Antes: eliminar el `PasswordEncoder` duplicado (`SecuriryBeansConfig`, que además tiene un typo en el nombre, o el adaptador), borrar `JwtProvider.extractUserId` / `extractEmail` (leen claims que no existen) y reemplazar `System.err` por un logger (SLF4J). Esta limpieza aplica también al `JwtProvider` de los otros servicios.
+- [x] **`LoginResponse.expiresIn`** tenía `3600` hardcodeado, pero el token dura 24 h. Ahora se calcula desde `security.jwt.expiration` (ms → s, 86400).
 
 ### 1.4 Catalog-service
 

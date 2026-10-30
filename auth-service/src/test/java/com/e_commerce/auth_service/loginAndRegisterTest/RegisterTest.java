@@ -1,6 +1,9 @@
 package com.e_commerce.auth_service.loginAndRegisterTest;
 
 
+import static org.mockito.Mockito.never;
+import org.springframework.security.authentication.DisabledException;
+import org.springframework.security.authentication.BadCredentialsException;
 import com.e_commerce.auth_service.application.service.AuthApplicationService;
 import com.e_commerce.auth_service.domain.model.Role;
 import com.e_commerce.auth_service.domain.model.User;
@@ -111,4 +114,47 @@ public class RegisterTest {
         assertEquals("fake-token", token);
     }
 
+    @Test
+    void loginDeUsuarioDeshabilitadoDebeFallar() {
+        User user = new User(UUID.randomUUID(), "off@mail.com", "hashed", "Off",
+                Set.of(Role.CLIENT), false);
+        when(userRepository.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("password", "hashed")).thenReturn(true);
+
+        assertThrows(DisabledException.class, () -> authService.login(user.getEmail(), "password"));
+        verify(tokenGenerator, never()).generateToken(any());
+    }
+
+    @Test
+    void loginDeUsuarioDeshabilitadoConPasswordIncorrectaNoRevelaElEstado() {
+        User user = new User(UUID.randomUUID(), "off@mail.com", "hashed", "Off",
+                Set.of(Role.CLIENT), false);
+        when(userRepository.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("wrong", "hashed")).thenReturn(false);
+
+        assertThrows(BadCredentialsException.class, () -> authService.login(user.getEmail(), "wrong"));
+    }
+
+    @Test
+    void cambiarRolDelSuperAdminDebeFallarSinGuardar() {
+        User superAdmin = new User(UUID.randomUUID(), "admin@mail.com", "hashed", "Admin",
+                Set.of(Role.SUPER_ADMIN), true);
+        when(userRepository.findById(superAdmin.getId())).thenReturn(Optional.of(superAdmin));
+
+        assertThrows(IllegalStateException.class,
+                () -> authService.changeUserRole(superAdmin.getId(), "CLIENT"));
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void cambiarRolDeClienteAAdmin() {
+        User client = new User(UUID.randomUUID(), "c@mail.com", "hashed", "Cliente",
+                Set.of(Role.CLIENT), true);
+        when(userRepository.findById(client.getId())).thenReturn(Optional.of(client));
+
+        authService.changeUserRole(client.getId(), "ADMIN");
+
+        assertEquals(Set.of(Role.ADMIN), client.getRoles());
+        verify(userRepository).save(client);
+    }
 }

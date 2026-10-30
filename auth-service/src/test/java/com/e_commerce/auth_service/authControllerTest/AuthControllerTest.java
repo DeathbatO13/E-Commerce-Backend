@@ -118,7 +118,9 @@ public class AuthControllerTest {
                         """)
                 )
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.accessToken").value("fake-token"));
+                .andExpect(jsonPath("$.accessToken").value("fake-token"))
+                // security.jwt.expiration = 86400000 ms → 86400 s
+                .andExpect(jsonPath("$.expiresIn").value(86400));
     }
 
     /**

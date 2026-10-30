@@ -4,6 +4,8 @@ package com.e_commerce.cart_service.config;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -12,6 +14,8 @@ import java.nio.charset.StandardCharsets;
 
 @Component
 public class JwtProvider {
+
+    private static final Logger log = LoggerFactory.getLogger(JwtProvider.class);
 
     @Value("${security.jwt.secret}")
     private String secret;
@@ -33,18 +37,14 @@ public class JwtProvider {
             this.getClaims(token);
             return true;
         } catch (io.jsonwebtoken.ExpiredJwtException e) {
-            System.err.println("El token JWT ha expirado: " + e.getMessage());
+            log.debug("El token JWT ha expirado: {}", e.getMessage());
         } catch (io.jsonwebtoken.security.SignatureException e) {
-            System.err.println("Firma del JWT inválida: " + e.getMessage());
+            log.warn("Firma del JWT inválida: {}", e.getMessage());
         } catch (io.jsonwebtoken.MalformedJwtException e) {
-            System.err.println("Token JWT mal formado: " + e.getMessage());
+            log.warn("Token JWT mal formado: {}", e.getMessage());
         } catch (Exception e) {
-            System.err.println("Error al validar el token JWT: " + e.getMessage());
+            log.warn("Error al validar el token JWT: {}", e.getMessage());
         }
         return false;
-    }
-
-    public String extractEmail(String token){
-        return getClaims(token).getSubject();
     }
 }
