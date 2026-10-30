@@ -1,5 +1,7 @@
 package com.e_commerce.auth_service.application.service;
 
+import org.springframework.security.authentication.BadCredentialsException;
+import com.e_commerce.auth_service.domain.exception.ResourceNotFoundException;
 import com.e_commerce.auth_service.domain.model.Role;
 import com.e_commerce.auth_service.domain.model.User;
 import com.e_commerce.auth_service.domain.port.in.ChangeUserRoleUseCase;
@@ -59,10 +61,10 @@ public class AuthApplicationService implements LoginUseCase,
     @Override
     public String login(String email, String rawPassword) {
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new IllegalArgumentException("Invalid credentials"));
+                .orElseThrow(() -> new BadCredentialsException("Invalid credentials"));
 
         if (!passwordEncoder.matches(rawPassword, user.getPassword())) {
-            throw new IllegalArgumentException("Invalid credentials");
+            throw new BadCredentialsException("Invalid credentials");
         }
 
         return tokenGenerator.generateToken(user);
@@ -85,7 +87,7 @@ public class AuthApplicationService implements LoginUseCase,
     @Override
     public User register(String email, String rawPassword, String fullname){
         if (userRepository.existByEmail(email)) {
-            throw new IllegalArgumentException("Email already registered");
+            throw new IllegalStateException("Email already registered");
         }
 
         User user = new User(
@@ -109,7 +111,7 @@ public class AuthApplicationService implements LoginUseCase,
     @Override
     public void changeUserRole(UUID userId, String role) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         Role newRole;
         try {

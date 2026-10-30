@@ -4,6 +4,7 @@ import com.e_commerce.catalog_service.adapter.in.rest.ProductController;
 import com.e_commerce.catalog_service.application.service.CategoryApplicationService;
 import com.e_commerce.catalog_service.config.JwtProvider;
 import com.e_commerce.catalog_service.config.SecurityConfig;
+import com.e_commerce.catalog_service.domain.exception.ResourceNotFoundException;
 import com.e_commerce.catalog_service.domain.model.Category;
 import com.e_commerce.catalog_service.domain.model.Product;
 import com.e_commerce.catalog_service.domain.port.in.*;
@@ -146,6 +147,46 @@ class ProductControllerTest {
                         }
                         """.formatted(UUID.randomUUID())))
                 .andExpect(status().isBadRequest());
+
+        verify(createProductUseCase, never()).create(any(Product.class));
+    }
+
+    /**
+     * Verifica que un producto inexistente responde 404 con el cuerpo de error estándar.
+     */
+    @Test
+    void shouldReturn404WhenProductDoesNotExist() throws Exception {
+        UUID productId = UUID.randomUUID();
+        when(getProductUseCase.getById(productId))
+                .thenThrow(new ResourceNotFoundException("Product not found"));
+
+        mockMvc.perform(get("/products/{id}", productId))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.message").value("Product not found"));
+    }
+
+    /**
+     * Verifica que crear un producto con una categoría inexistente responde 404.
+     */
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void shouldReturn404WhenCategoryDoesNotExist() throws Exception {
+        UUID categoryId = UUID.randomUUID();
+        when(categoryService.existsById(categoryId)).thenReturn(false);
+
+        mockMvc.perform(post("/products")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                        {
+                            "name": "Laptop",
+                            "description": "Gaming Laptop",
+                            "price": 1600,
+                            "stock": 10,
+                            "categoryId": "%s"
+                        }
+                        """.formatted(categoryId)))
+                .andExpect(status().isNotFound());
 
         verify(createProductUseCase, never()).create(any(Product.class));
     }

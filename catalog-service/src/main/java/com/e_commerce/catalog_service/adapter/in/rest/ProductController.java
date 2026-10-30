@@ -1,5 +1,6 @@
 package com.e_commerce.catalog_service.adapter.in.rest;
 
+import com.e_commerce.catalog_service.domain.exception.ResourceNotFoundException;
 import com.e_commerce.catalog_service.adapter.in.rest.dto.request.CreateProductRequest;
 import com.e_commerce.catalog_service.adapter.in.rest.dto.request.UpdateProductRequest;
 import com.e_commerce.catalog_service.adapter.in.rest.dto.response.ProductResponse;
@@ -7,7 +8,6 @@ import com.e_commerce.catalog_service.application.service.CategoryApplicationSer
 import com.e_commerce.catalog_service.domain.model.Category;
 import com.e_commerce.catalog_service.domain.model.Product;
 import com.e_commerce.catalog_service.domain.port.in.*;
-import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
@@ -75,7 +75,7 @@ public class ProductController {
     public ProductResponse create(@Valid @RequestBody CreateProductRequest request) {
 
         if(!categoryService.existsById(request.categoryId()))
-            throw new EntityNotFoundException("Categoria no encontrada");
+            throw new ResourceNotFoundException("Category not found");
 
         var product = createProductUseCase.create(
                 new Product(

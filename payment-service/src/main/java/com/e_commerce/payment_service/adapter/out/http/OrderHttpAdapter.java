@@ -1,5 +1,7 @@
 package com.e_commerce.payment_service.adapter.out.http;
 
+import com.e_commerce.payment_service.domain.exception.ResourceNotFoundException;
+import org.springframework.http.HttpStatus;
 import com.e_commerce.payment_service.domain.port.out.OrderPort;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -30,6 +32,12 @@ public class OrderHttpAdapter implements OrderPort {
                 .uri("/orders/{id}/pay", orderId)
                 .header(INTERNAL_TOKEN_HEADER, internalToken)
                 .retrieve()
+                .onStatus(status -> status.isSameCodeAs(HttpStatus.NOT_FOUND), (request, response) -> {
+                    throw new ResourceNotFoundException("Order not found: " + orderId);
+                })
+                .onStatus(status -> status.isSameCodeAs(HttpStatus.CONFLICT), (request, response) -> {
+                    throw new IllegalStateException("Order " + orderId + " cannot be paid in its current state");
+                })
                 .toBodilessEntity();
     }
 }

@@ -29,10 +29,10 @@ Estos son los problemas concretos encontrados al revisar el código actual. No s
 >
 > | Servicio | Compila | Tests | Notas |
 > |---|---|---|---|
-> | auth-service | ✅ | ✅ 6/6 | requiere Postgres local con `auth_db` |
-> | catalog-service | ✅ | ✅ 12/12 | `contextLoads` usa el perfil `test` (H2) |
-> | cart-service | ✅ | ✅ 5/5 | `contextLoads` todavía requiere Postgres con `cart_db` |
-> | order-service | ✅ | ✅ 9/9 | incluye `contextLoads` contra `order_db` |
+> | auth-service | ✅ | ✅ 8/8 | requiere Postgres local con `auth_db` |
+> | catalog-service | ✅ | ✅ 15/15 | `contextLoads` usa el perfil `test` (H2) |
+> | cart-service | ✅ | ✅ 14/14 | `contextLoads` y `@DataJpaTest` usan el perfil `test` (H2) |
+> | order-service | ✅ | ✅ 15/15 | incluye `contextLoads` contra `order_db` |
 > | payment-service | ✅ | — (sin tests) | |
 >
 > ⚠️ **Corrección del diagnóstico del 25-oct:** se hizo sobre un `develop` local desactualizado (`1ad3395`). `origin/develop` ya tenía commiteado payment-service, la Fase 2 de order y el manejo de errores (`d62e8bf`, `de778d0`, `ef16919`). No se había "perdido" código: solo faltaba sincronizar con `git pull`. Varias tareas marcadas abajo como "recuperadas" ya existían en remoto.
@@ -55,7 +55,7 @@ Estos son los problemas concretos encontrados al revisar el código actual. No s
 - [x] **Typo `"ROLE_ADMMIN"`** en `OrderController`: resuelto. Ojo: el listado sigue roto porque está comentado (ver 0.1).
 - [ ] **Ruta duplicada `/admin/admin/...`** en `UserController` de auth-service, por sumar el path del método al del `@RequestMapping` de clase.
 - [ ] **Listado de usuarios restringido solo a SUPER_ADMIN**, cuando la regla de negocio dice que ADMIN también debería poder listarlos. La restricción está en **dos lugares**: el `@PreAuthorize` de clase y `requestMatchers("/admin/**").hasRole("SUPER_ADMIN")` en `SecurityConfig`.
-- [ ] **El manejo global de errores es incompleto**: los 5 servicios tienen `GlobalExceptionHandler`, pero el handler genérico de `Exception` convierte en 500 los 403 (`AccessDeniedException`), los 404 y los errores de `RestClient`. Faltan handlers específicos para devolver 400/403/404/409/502 con un body claro.
+- [x] **El manejo global de errores es incompleto**: resuelto (28-oct), ver 3.1.
 - [ ] **Sin Dockerfile** en cart-service, catalog-service y order-service (solo existe en auth-service, y no es multi-stage). Sin `docker-compose.yml` raíz. Sin `render.yaml`. Sin `.github/workflows`.
 - [ ] **Secrets hardcodeados** (contraseñas de DB, JWT secret, password del super admin) directamente en los `application*.yml`, en vez de venir de variables de entorno — inviable para producción/Render.
 - [ ] **CORS solo configurado en auth-service** — el frontend no podrá llamar a los demás servicios desde el navegador.
@@ -63,7 +63,7 @@ Estos son los problemas concretos encontrados al revisar el código actual. No s
 
 ### 0.3 Hallazgos nuevos de menor severidad
 
-- [ ] **Hexagonal violada en cart-service**: `Cart` y `CartItem` del dominio tienen `@Entity` sobre las mismas tablas que `CartJpaEntity` / `CartItemJpaEntity`.
+- [x] **Hexagonal violada en cart-service**: resuelto (28-oct), ver 1.2.
 - [ ] **Hexagonal violada en catalog-service**: `ProductController` depende de la clase concreta `CategoryApplicationService` en vez del puerto `ConfirmCategoryExistsUseCase`. Por ahora `ProductControllerTest` mockea `CategoryApplicationService`; al pasar al puerto, cambiar ese mock.
 - [ ] **Versiones inconsistentes**: Spring Boot 3.5.9 / 3.5.10 / 3.5.11 según el servicio. springdoc 2.3.0 y 2.5.0 no son compatibles con Boot 3.5 (necesita 2.8.x), y cart y order ni siquiera lo incluyen. order-service mezcla `jjwt-impl 0.12.6` con `jjwt-api 0.11.5`.
 - [ ] **Repos git anidados**: cada servicio tiene un `.git` vacío (rama `master` sin commits) que dejó Spring Initializr. Confunde al IDE y a git.
@@ -92,8 +92,7 @@ Objetivo: que lo que "ya está hecho" funcione de verdad antes de sumar código 
 - [ ] **Pendientes de la Fase 2 / 3 en order, cart y auth**:
   - [x] **`POST /orders/{id}/pay` restringido a payment-service**: `InternalServiceAuthFilter` valida el header `X-Internal-Token` (comparación en tiempo constante) y asigna `ROLE_SERVICE`; `SecurityConfig` exige ese rol en `/orders/*/pay`. CLIENT y ADMIN reciben 403. payment-service envía el header desde `OrderHttpAdapter`. Configuración: `security.internal-token: ${INTERNAL_SERVICE_TOKEN:...}`, con el mismo valor en order y payment. Cubierto por 4 tests en `OrderControllerTest`.
   - [x] **Contrato cart → order alineado**: `CartResponse.item` renombrado a `items`, igual que `CartDto` de order y `cart.yaml`.
-  - El `@ExceptionHandler(Exception.class)` genérico de los `GlobalExceptionHandler` convierte en 500 los 403 de `@PreAuthorize` (`AccessDeniedException` / `AuthorizationDeniedException`), los 404 de rutas inexistentes (`NoResourceFoundException`) y los JSON malformados (`HttpMessageNotReadableException`). Hay que agregar handlers específicos o volver a lanzar esas excepciones.
-  - Los errores HTTP de `RestClient` entre servicios (`HttpClientErrorException`) también terminan como 500: traducirlos (404 → producto inexistente, etc.).
+  - ~~El handler genérico convertía en 500 los 403, los 404, los JSON malformados y los errores de `RestClient`~~: resuelto (28-oct), ver 3.1.
   - Flyway en catalog y order sin migraciones: si `catalog_db` / `order_db` ya tienen tablas creadas por `ddl-auto`, Flyway falla con *non-empty schema without history table*. Crear las `V1__` (3.4) o usar `baseline-on-migrate` mientras tanto.
   - `OrderService` (capa de aplicación) importa `CartDto` del adaptador HTTP: mover un modelo equivalente al dominio o a `domain/ports/out`.
   - `listUsers` ya permite ADMIN con `@PreAuthorize`, pero `SecurityConfig` sigue con `/admin/**` → `hasRole("SUPER_ADMIN")` (ver 1.3).
@@ -113,12 +112,13 @@ Objetivo: que lo que "ya está hecho" funcione de verdad antes de sumar código 
 ### 1.2 Cart-service
 
 - [x] **Persistir los items**: en `CartMapper.toEntity`, asignar la lista de `CartItemJpaEntity` construida a la entidad del carrito (hoy se crea y se descarta).
-- [ ] **Quitar las anotaciones JPA del dominio** (`@Entity`, `@Table`, `@Id`, `@OneToMany`, `@ManyToOne` en `Cart` y `CartItem`). *Por qué:* el dominio no debe conocer la base de datos; además, hoy hay dos entidades JPA mapeando las mismas tablas.
-- [ ] **Evitar `LazyInitializationException`**: con `open-in-view: false` y sin `@Transactional`, los items (LAZY) se mapean con la sesión de Hibernate ya cerrada. Agregar `@Transactional` en `CartApplicationService` (`readOnly = true` en las lecturas) o usar `@EntityGraph` / `JOIN FETCH` en `findByUserId`.
-- [ ] **Corregir `deleteByUserId`**: hoy llama a `deleteById(userId)`, es decir, borra por id de carrito usando el id del usuario.
+- [x] **Quitar las anotaciones JPA del dominio** (`@Entity`, `@Table`, `@Id`, `@OneToMany`, `@ManyToOne` en `Cart` y `CartItem`). Hecho (28-oct); también se quitaron los constructores vacíos que solo existían para JPA. *Por qué:* el dominio no debe conocer la base de datos; además, hoy hay dos entidades JPA mapeando las mismas tablas.
+- [x] **Evitar `LazyInitializationException`**: `CartJpaRepository.findByUserId` / `findById` usan `@EntityGraph(attributePaths = "items")` y `CartPersistenceAdapter.save` es `@Transactional`, así el mapeo ocurre con los items ya cargados. Lo cubre `CartPersistenceAdapterTest` (corre sin transacción de test, como en producción).
+- [x] **No se podía agregar un producto a un carrito ya guardado**: `CartMapper.toDomain` armaba los items con `.toList()` (lista inmutable) y `Cart.addProduct` lanzaba `UnsupportedOperationException` → 500. Ahora `Cart` copia la lista a un `ArrayList` y `getItems()` expone una vista de solo lectura.
+- [x] **Corregir `deleteByUserId`**: ahora usa la query derivada `CartJpaRepository.deleteByUserId` (antes llamaba a `deleteById(userId)`).
 - [ ] **Renombrar la migración** `v1__create_cart_tables.sql` → `V1__create_cart_tables.sql`, y pasar a `ddl-auto: validate` (ver 3.4).
-- [ ] **Quitar `price` de `AddItemRequest`**: el precio debe venir siempre de catalog-service, nunca del cliente.
-- [ ] **Validar los requests** con `@Valid` + `@NotNull` / `@Positive` en `AddItemRequest` y `UpdateItemRequest`.
+- [x] **Quitar `price` de `AddItemRequest`**: se quitó del DTO y de `AddProductCartUseCase.addProduct`; el precio sale siempre de `CatalogPort` (y se consulta antes de tocar el carrito).
+- [x] **Validar los requests**: `@Valid` en el controller, `@NotNull productId` y `@Positive quantity` (mínimo 1 en ambos, como dice `cart.yaml`; para quitar un producto está `DELETE /cart/items/{productId}`).
 - [x] **Renombrar `CartResponse.item` → `items`**, como dice el contrato `cart.yaml`.
 - [ ] **Permitir el carrito a SUPER_ADMIN** (o documentar que no puede comprar): hoy `/cart/**` solo admite ADMIN y CLIENT.
 - [x] **Implementar el adaptador HTTP para `CatalogPort`**: una clase en `adapter/out` que llame por HTTP a `GET /products/{id}` de catalog-service (usando `RestClient` de Spring, que es el cliente HTTP moderno recomendado desde Spring 6).
@@ -183,10 +183,17 @@ Esta es la fase más importante para entender **cómo se comunican los microserv
 
 ### 3.1 Manejo de errores
 
-- [x] Crear un `@ControllerAdvice` (clase con `@ExceptionHandler`) en cada servicio (recuperado; ojo con el handler genérico, ver 1.0) que traduzca las excepciones de dominio a códigos HTTP correctos:
+- [x] Crear un `@ControllerAdvice` (clase con `@ExceptionHandler`) en cada servicio que traduzca las excepciones a códigos HTTP correctos. Completado el 28-oct: el `GlobalExceptionHandler` de los 5 servicios extiende `ResponseEntityExceptionHandler` y todas las respuestas usan el mismo `ErrorResponse` (`status`, `error`, `message`, `timestamp`):
   - `IllegalArgumentException` → `400 Bad Request`
-  - `IllegalStateException` (ej. cancelar un pedido pagado) → `409 Conflict`
-  - "no encontrado" → `404 Not Found`
+  - Validación (`@Valid`), JSON malformado, UUID inválido en la ruta, parámetro faltante → `400` (los resuelve `ResponseEntityExceptionHandler`, igual que `405`, `415` y `404` de rutas inexistentes)
+  - `AuthenticationException` (ej. `BadCredentialsException` en login) → `401 Unauthorized`
+  - `AccessDeniedException` (ej. pedido de otro usuario) → `403 Forbidden`
+  - `ResourceNotFoundException` (nueva, en `domain/exception` de cada servicio) → `404 Not Found`
+  - `IllegalStateException` (ej. cancelar un pedido pagado, email o categoría duplicados) → `409 Conflict`
+  - En cart, order y payment: error HTTP de un servicio downstream (`RestClientResponseException`) → `502`; servicio caído o timeout (`ResourceAccessException`) → `503`. Los adaptadores traducen antes los casos esperados: catalog 404 → `ResourceNotFoundException`; en payment, order 404/409 → 404/409.
+  - Cualquier otra → `500` con mensaje genérico, y ahora se **loguea** el stacktrace (antes se perdía).
+  - `OrderController` ya no arma 403/404 vacíos a mano: lanza las excepciones y el handler responde con cuerpo.
+- [ ] Pendientes de errores: `OrderService` responde 400 cuando el carrito está vacío (sería más claro 409 o 422); si cart-service rechaza el token al crear un pedido, order responde 502 en vez de propagar el 401.
   - *Por qué:* sin esto, Spring Boot devuelve una página de error genérica con stacktrace, lo cual es una mala práctica de API (expone detalles internos) y obliga al frontend a adivinar qué pasó.
 
 ### 3.2 Configuración y secretos
@@ -223,10 +230,10 @@ Con ~25 tests en todo el repo, casi todos "happy path" sobre controllers, falta 
   - Los `@WebMvcTest` de catalog y cart importan su `SecurityConfig` real y mockean `JwtProvider`, así que también prueban las reglas de acceso (se agregaron casos 403 para CLIENT y sin autenticación). Se agregó `spring-security-test` a catalog.
   - `CartControllerTest` reescrito: autentica con `user(userId)` (el controller lee el userId de `Authentication`, no de un atributo del request), ya no mockea el DTO `AddItemRequest` y el test de actualización usa `PUT /cart/items/{productId}`.
   - `CatalogServiceApplicationTests` usa `@ActiveProfiles("test")` (H2).
-- [ ] **`contextLoads` de cart sin Postgres**: agregar H2 en scope test a cart-service y `@ActiveProfiles("test")` en `CartServiceApplicationTests`. (Order y auth también dependen de Postgres local.)
+- [x] **`contextLoads` de cart sin Postgres**: H2 en scope test y `@ActiveProfiles("test")`. (Order y auth todavía dependen de Postgres local.)
 
 - [ ] **Tests de dominio puro** (clases `Order`, `Cart`, `User`, `Product`, sin Spring): probar transiciones de estado inválidas (pagar un pedido cancelado, agregar cantidad negativa, etc.) y las invariantes del constructor.
-- [ ] **Tests de casos de uso** con los puertos de salida mockeados (Mockito): `CartApplicationServiceTest` no existe hoy y es el más urgente, porque ahí vive el bug del `CatalogPort` nulo.
+- [ ] **Tests de casos de uso** con los puertos de salida mockeados (Mockito). `CartApplicationServiceTest` ya existe (28-oct); faltan los de catalog (parcial), auth y payment.
 - [ ] **Tests de seguridad**: para cada servicio, verificar 401 sin token, 403 con rol insuficiente, y que un CLIENT no pueda llegar a endpoints de ADMIN.
 - [ ] **Tests de integración entre servicios**: simular las respuestas de catalog-service/cart-service/order-service con WireMock o `MockWebServer`, para probar el flujo completo sin levantar los 5 servicios reales.
 - [ ] **Tests de persistencia** (`@DataJpaTest`) para los mappers JPA↔dominio, al menos en catalog-service y order-service.

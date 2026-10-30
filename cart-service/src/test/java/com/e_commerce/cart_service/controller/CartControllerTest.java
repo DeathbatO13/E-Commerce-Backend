@@ -18,7 +18,7 @@ import java.math.BigDecimal;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -84,7 +84,7 @@ public class CartControllerTest {
         Cart cart = new Cart(userId);
         cart.addProduct(productId, BigDecimal.valueOf(50), 2);
 
-        when(addProductCartUseCase.addProduct(eq(userId), eq(productId), any(), eq(2)))
+        when(addProductCartUseCase.addProduct(userId, productId, 2))
                 .thenReturn(cart);
 
         String body = """
@@ -101,7 +101,38 @@ public class CartControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[0].productId").value(productId.toString()));
 
-        verify(addProductCartUseCase).addProduct(eq(userId), eq(productId), any(), eq(2));
+        verify(addProductCartUseCase).addProduct(userId, productId, 2);
+    }
+
+    @Test
+    void shouldRejectAddItemWithInvalidQuantity() throws Exception {
+
+        UUID userId = UUID.randomUUID();
+
+        mockMvc.perform(post("/cart/items")
+                        .with(client(userId))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                        { "productId": "%s", "quantity": 0 }
+                        """.formatted(UUID.randomUUID())))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Validation Error"));
+
+        verify(addProductCartUseCase, never()).addProduct(any(), any(), anyInt());
+    }
+
+    @Test
+    void shouldRejectAddItemWithoutProductId() throws Exception {
+
+        mockMvc.perform(post("/cart/items")
+                        .with(client(UUID.randomUUID()))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                        { "quantity": 1 }
+                        """))
+                .andExpect(status().isBadRequest());
+
+        verify(addProductCartUseCase, never()).addProduct(any(), any(), anyInt());
     }
 
     @Test

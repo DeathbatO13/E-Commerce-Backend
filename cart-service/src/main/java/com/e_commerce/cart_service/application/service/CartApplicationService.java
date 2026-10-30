@@ -1,5 +1,6 @@
 package com.e_commerce.cart_service.application.service;
 
+import com.e_commerce.cart_service.domain.exception.ResourceNotFoundException;
 import com.e_commerce.cart_service.domain.model.Cart;
 import com.e_commerce.cart_service.domain.port.in.*;
 import com.e_commerce.cart_service.domain.port.out.CartRepository;
@@ -23,12 +24,14 @@ public class CartApplicationService implements
     }
 
     @Override
-    public Cart addProduct(UUID userId, UUID productId, BigDecimal price, int quantity) {
+    public Cart addProduct(UUID userId, UUID productId, int quantity) {
+
+        // El precio siempre sale de catalog-service (también valida que el producto exista y esté activo)
+        BigDecimal price = catalogPort.getPrice(productId);
 
         Cart cart = cartRepository.findByUserId(userId)
                 .orElseGet(() -> Cart.create(userId));
 
-        price = catalogPort.getPrice(productId);
         cart.addProduct(productId, price, quantity);
 
         return cartRepository.save(cart);
@@ -38,7 +41,7 @@ public class CartApplicationService implements
     public void clearCart(UUID userId) {
 
         Cart cart = cartRepository.findByUserId(userId)
-                .orElseThrow(() -> new IllegalArgumentException("Cart not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Cart not found"));
 
         cart.clear();
 
@@ -56,7 +59,7 @@ public class CartApplicationService implements
     public void removeProduct(UUID userId, UUID productId) {
 
         Cart cart = cartRepository.findByUserId(userId)
-                .orElseThrow(() -> new IllegalArgumentException("Cart not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Cart not found"));
 
         cart.removeProduct(productId);
 
@@ -68,11 +71,10 @@ public class CartApplicationService implements
     public Cart updateQuantity(UUID userId, UUID productId, int quantity) {
 
         Cart cart = cartRepository.findByUserId(userId)
-                .orElseThrow(() -> new IllegalArgumentException("Cart not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Cart not found"));
 
         cart.updateQuantity(productId, quantity);
 
-        cartRepository.save(cart);
-        return cart;
+        return cartRepository.save(cart);
     }
 }

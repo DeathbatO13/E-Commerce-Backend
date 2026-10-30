@@ -55,7 +55,7 @@ class CategoryServiceTest {
     }
 
     /**
-     * Verifica que se lanza IllegalArgumentException al intentar crear una categoría
+     * Verifica que se lanza IllegalStateException (409) al intentar crear una categoría
      * cuyo nombre ya existe en el sistema.
      */
     @Test
@@ -64,7 +64,7 @@ class CategoryServiceTest {
                 .thenReturn(Optional.of(new Category()));
 
         assertThrows(
-                IllegalArgumentException.class,
+                IllegalStateException.class,
                 () -> service.create("Electronics")
         );
     }
