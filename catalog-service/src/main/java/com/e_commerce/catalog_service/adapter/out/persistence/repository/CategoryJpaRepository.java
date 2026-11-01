@@ -33,5 +33,5 @@ public interface CategoryJpaRepository extends JpaRepository<CategoryJpaEntity, 
      */
     List<CategoryJpaEntity> findByActiveTrue();
 
-    boolean existsById(UUID id);
+    boolean existsByIdAndActiveTrue(UUID id);
 }

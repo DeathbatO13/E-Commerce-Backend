@@ -42,7 +42,8 @@ public class UserJpaEntity{
     private String fullname;
 
     @ElementCollection(fetch = FetchType.EAGER)
-    @Enumerated(EnumType.STRING)
+    @CollectionTable(name = "user_roles", joinColumns = @JoinColumn(name = "user_id"))
+    @Column(name = "role", nullable = false)
     private Set<String> roles;
 
     private boolean enabled;

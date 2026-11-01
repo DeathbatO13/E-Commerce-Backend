@@ -1,5 +1,9 @@
 package com.e_commerce.payment_service.adapter.out.http;
 
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.http.HttpHeaders;
+import com.e_commerce.payment_service.domain.model.OrderSummary;
+import com.e_commerce.payment_service.adapter.out.http.dto.OrderDto;
 import com.e_commerce.payment_service.domain.exception.ResourceNotFoundException;
 import org.springframework.http.HttpStatus;
 import com.e_commerce.payment_service.domain.port.out.OrderPort;
@@ -23,6 +27,26 @@ public class OrderHttpAdapter implements OrderPort {
             @Value("${security.internal-token}") String internalToken) {
         this.restClient = builder.baseUrl(orderServiceUrl).build();
         this.internalToken = internalToken;
+    }
+
+    @Override
+    public OrderSummary getOrder(UUID orderId, String authorizationToken) {
+        OrderDto order = restClient.get()
+                .uri("/orders/{id}", orderId)
+                .header(HttpHeaders.AUTHORIZATION, authorizationToken)
+                .retrieve()
+                .onStatus(status -> status.isSameCodeAs(HttpStatus.NOT_FOUND), (request, response) -> {
+                    throw new ResourceNotFoundException("Order not found: " + orderId);
+                })
+                .onStatus(status -> status.isSameCodeAs(HttpStatus.FORBIDDEN), (request, response) -> {
+                    throw new AccessDeniedException("Order " + orderId + " belongs to another user");
+                })
+                .body(OrderDto.class);
+
+        if (order == null) {
+            throw new ResourceNotFoundException("Order not found: " + orderId);
+        }
+        return new OrderSummary(order.id(), order.userId(), order.status(), order.total());
     }
 
     @Override

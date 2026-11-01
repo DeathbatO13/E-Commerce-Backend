@@ -1,6 +1,8 @@
 package com.e_commerce.order_service.adapter.out.http;
 
+import java.util.List;
 import com.e_commerce.order_service.adapter.out.http.dto.CartDto;
+import com.e_commerce.order_service.domain.model.CartSnapshot;
 import com.e_commerce.order_service.domain.ports.out.CartPort;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -20,12 +22,19 @@ public class CartHttpAdapter implements CartPort {
     }
 
     @Override
-    public CartDto getActiveCart(UUID userId, String token) {
-        return restClient.get()
+    public CartSnapshot getActiveCart(UUID userId, String token) {
+        CartDto cart = restClient.get()
                 .uri("/cart")
                 .header("Authorization", token)
                 .retrieve()
                 .body(CartDto.class);
+
+        if (cart == null || cart.items() == null) {
+            return new CartSnapshot(userId, List.of());
+        }
+        return new CartSnapshot(userId, cart.items().stream()
+                .map(item -> new CartSnapshot.Item(item.productId(), item.quantity()))
+                .toList());
     }
 
     @Override

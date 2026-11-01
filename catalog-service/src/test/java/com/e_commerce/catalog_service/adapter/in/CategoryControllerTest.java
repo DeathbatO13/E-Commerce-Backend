@@ -1,5 +1,10 @@
 package com.e_commerce.catalog_service.adapter.in;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.ArgumentMatchers.any;
 import com.e_commerce.catalog_service.adapter.in.rest.CategoryController;
 import com.e_commerce.catalog_service.config.JwtProvider;
 import com.e_commerce.catalog_service.config.SecurityConfig;
@@ -76,7 +81,7 @@ class CategoryControllerTest {
                         .content("""
                         { "name": "Books" }
                     """))
-                .andExpect(status().isOk())
+                .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.name").value("Books"))
                 .andExpect(jsonPath("$.active").value(true));
     }
@@ -132,5 +137,46 @@ class CategoryControllerTest {
                     """))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.message").value("Category already exists"));
+    }
+
+    /**
+     * Verifica que un nombre vacío se rechaza con 400.
+     */
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void shouldRejectBlankCategoryName() throws Exception {
+        mockMvc.perform(post("/categories")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                        { "name": "  " }
+                    """))
+                .andExpect(status().isBadRequest());
+
+        verify(createCategoryUseCase, never()).create(any());
+    }
+
+    /**
+     * Verifica que DELETE responde 204 No Content.
+     */
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void shouldReturn204WhenDeletingCategory() throws Exception {
+        mockMvc.perform(delete("/categories/{id}", UUID.randomUUID()))
+                .andExpect(status().isNoContent());
+    }
+
+    /**
+     * Verifica que no se puede desactivar una categoría con productos activos.
+     */
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void shouldReturn409WhenCategoryHasActiveProducts() throws Exception {
+        UUID categoryId = UUID.randomUUID();
+        doThrow(new IllegalStateException("Category has active products"))
+                .when(deleteCategoryUseCase).deleteById(categoryId);
+
+        mockMvc.perform(delete("/categories/{id}", categoryId))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value("Category has active products"));
     }
 }

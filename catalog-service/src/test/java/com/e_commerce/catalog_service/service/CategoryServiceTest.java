@@ -1,5 +1,7 @@
 package com.e_commerce.catalog_service.service;
 
+import static org.mockito.Mockito.never;
+import com.e_commerce.catalog_service.domain.port.out.ProductRepository;
 import com.e_commerce.catalog_service.application.service.CategoryApplicationService;
 import com.e_commerce.catalog_service.domain.model.Category;
 import com.e_commerce.catalog_service.domain.port.out.CategoryRepository;
@@ -29,6 +31,9 @@ class CategoryServiceTest {
 
     @Mock
     private CategoryRepository categoryRepository;
+
+    @Mock
+    private ProductRepository productRepository;
 
     @InjectMocks
     private CategoryApplicationService service;
@@ -80,5 +85,15 @@ class CategoryServiceTest {
         service.deleteById(id);
 
         verify(categoryRepository).deactivate(id);
+    }
+
+    @Test
+    void shouldNotDeactivateCategoryWithActiveProducts() {
+        UUID id = UUID.randomUUID();
+        when(productRepository.existsByCategory(id)).thenReturn(true);
+
+        assertThrows(IllegalStateException.class, () -> service.deleteById(id));
+
+        verify(categoryRepository, never()).deactivate(id);
     }
 }

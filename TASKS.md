@@ -29,18 +29,18 @@ Estos son los problemas concretos encontrados al revisar el código actual. No s
 >
 > | Servicio | Compila | Tests | Notas |
 > |---|---|---|---|
-> | auth-service | ✅ | ✅ 20/20 | requiere Postgres local con `auth_db` |
-> | catalog-service | ✅ | ✅ 15/15 | `contextLoads` usa el perfil `test` (H2) |
-> | cart-service | ✅ | ✅ 14/14 | `contextLoads` y `@DataJpaTest` usan el perfil `test` (H2) |
-> | order-service | ✅ | ✅ 15/15 | incluye `contextLoads` contra `order_db` |
-> | payment-service | ✅ | — (sin tests) | |
+> | auth-service | ✅ | ✅ 21/21 | `contextLoads` usa el perfil `test` (H2) |
+> | catalog-service | ✅ | ✅ 25/25 | `contextLoads` usa el perfil `test` (H2) |
+> | cart-service | ✅ | ✅ 17/17 | `contextLoads` y `@DataJpaTest` usan el perfil `test` (H2) |
+> | order-service | ✅ | ✅ 18/18 | `contextLoads` usa el perfil `test` (H2) |
+> | payment-service | ✅ | ✅ 11/11 | sin `contextLoads` (necesitaría `payment_db`) |
 >
 > ⚠️ **Corrección del diagnóstico del 25-oct:** se hizo sobre un `develop` local desactualizado (`1ad3395`). `origin/develop` ya tenía commiteado payment-service, la Fase 2 de order y el manejo de errores (`d62e8bf`, `de778d0`, `ef16919`). No se había "perdido" código: solo faltaba sincronizar con `git pull`. Varias tareas marcadas abajo como "recuperadas" ya existían en remoto.
 
 ### 0.1 Bloqueantes
 
-- [ ] **`develop` en remoto (`f186f28`) no compila.** Los merges `25eee15` (PR #101) y `c7407ac` (PR #102) se resolvieron conservando *ambos* lados de cada conflicto: beans y constructores duplicados en `BeanConfiguration` y `OrderService`, `<version>` duplicado en `payment-service/pom.xml`, dos claves `security:` en `order-service/application.yaml` y un `=======` suelto en `TASKS.md`. **Reparado en el working tree (28-oct), pendiente de commit**: se tomó la versión coherente de cada archivo, conservando lo que aportaba develop (JWT unificado y el constructor privado de `RestMapper`).
-- [ ] **`payment-service/target/` quedó commiteado** (24 archivos de compilación) a pesar de su `.gitignore`. Sacarlo del índice con `git rm -r --cached payment-service/target`.
+- [x] **`develop` en remoto (`f186f28`) no compilaba.** Los merges `25eee15` (PR #101) y `c7407ac` (PR #102) se resolvieron conservando *ambos* lados de cada conflicto: beans y constructores duplicados en `BeanConfiguration` y `OrderService`, `<version>` duplicado en `payment-service/pom.xml`, dos claves `security:` en `order-service/application.yaml` y un `=======` suelto en `TASKS.md`. **Reparado (28-oct) y mergeado en develop**: se tomó la versión coherente de cada archivo, conservando lo que aportaba develop (JWT unificado y el constructor privado de `RestMapper`).
+- [x] **`payment-service/target/` quedó commiteado** (ya se sacó del índice) (24 archivos de compilación) a pesar de su `.gitignore`. Sacarlo del índice con `git rm -r --cached payment-service/target`.
 - [x] **El secreto JWT no es el mismo entre servicios**: resuelto en `ef16919`. Los 5 servicios leen `security.jwt.secret` con `${JWT_SECRET:...}` y el mismo valor por defecto.
 - [x] **cart-service nunca guarda los items**: resuelto (`CartMapper.toEntity` agrega los items a la entidad).
 - [x] **`POST /products` siempre responde 500** en catalog-service: `@NotBlank` sobre `BigDecimal`, `int` y `UUID` lanzaba `UnexpectedTypeException`. Resuelto (28-oct) en `CreateProductRequest` y `UpdateProductRequest` con `@NotNull` / `@Positive` / `@PositiveOrZero`; lo cubre `ProductControllerTest.shouldRejectProductWithInvalidPrice`.
@@ -57,15 +57,15 @@ Estos son los problemas concretos encontrados al revisar el código actual. No s
 - [x] **Listado de usuarios restringido solo a SUPER_ADMIN** (resuelto el 29-oct, ver 1.3), cuando la regla de negocio dice que ADMIN también debería poder listarlos. La restricción está en **dos lugares**: el `@PreAuthorize` de clase y `requestMatchers("/admin/**").hasRole("SUPER_ADMIN")` en `SecurityConfig`.
 - [x] **El manejo global de errores es incompleto**: resuelto (28-oct), ver 3.1.
 - [ ] **Sin Dockerfile** en cart-service, catalog-service y order-service (solo existe en auth-service, y no es multi-stage). Sin `docker-compose.yml` raíz. Sin `render.yaml`. Sin `.github/workflows`.
-- [ ] **Secrets hardcodeados** (contraseñas de DB, JWT secret, password del super admin) directamente en los `application*.yml`, en vez de venir de variables de entorno — inviable para producción/Render.
-- [ ] **CORS solo configurado en auth-service** — el frontend no podrá llamar a los demás servicios desde el navegador.
-- [ ] **Flyway roto donde existe**: en auth-service está deshabilitado y `V1__create_users_table.sql` no coincide con la entidad (falta `fullname`, y la tabla de roles `user_roles` no es la que genera JPA). En cart-service el archivo se llama `v1__...` en minúscula, así que Flyway lo ignora (el prefijo `V` distingue mayúsculas).
+- [x] **Secrets hardcodeados** (resuelto el 01-nov, ver 3.2) (contraseñas de DB, JWT secret, password del super admin) directamente en los `application*.yml`, en vez de venir de variables de entorno — inviable para producción/Render.
+- [x] **CORS solo configurado en auth-service** (resuelto el 01-nov, ver 3.3) — el frontend no podrá llamar a los demás servicios desde el navegador.
+- [x] **Flyway roto donde existe** (resuelto el 01-nov, ver 3.4): en auth-service está deshabilitado y `V1__create_users_table.sql` no coincide con la entidad (falta `fullname`, y la tabla de roles `user_roles` no es la que genera JPA). En cart-service el archivo se llama `v1__...` en minúscula, así que Flyway lo ignora (el prefijo `V` distingue mayúsculas).
 
 ### 0.3 Hallazgos nuevos de menor severidad
 
 - [x] **Hexagonal violada en cart-service**: resuelto (28-oct), ver 1.2.
-- [ ] **Hexagonal violada en catalog-service**: `ProductController` depende de la clase concreta `CategoryApplicationService` en vez del puerto `ConfirmCategoryExistsUseCase`. Por ahora `ProductControllerTest` mockea `CategoryApplicationService`; al pasar al puerto, cambiar ese mock.
-- [ ] **Versiones inconsistentes**: Spring Boot 3.5.9 / 3.5.10 / 3.5.11 según el servicio. springdoc 2.3.0 y 2.5.0 no son compatibles con Boot 3.5 (necesita 2.8.x), y cart y order ni siquiera lo incluyen. order-service mezcla `jjwt-impl 0.12.6` con `jjwt-api 0.11.5`.
+- [x] **Hexagonal violada en catalog-service**: resuelto (01-nov), ver 1.4.
+- [x] **Versiones inconsistentes** (alineadas el 01-nov, ver 3.2): Spring Boot 3.5.9 / 3.5.10 / 3.5.11 según el servicio. springdoc 2.3.0 y 2.5.0 no son compatibles con Boot 3.5 (necesita 2.8.x), y cart y order ni siquiera lo incluyen. ~~order-service mezclaba `jjwt-impl 0.12.6` con `jjwt-api 0.11.5`~~ (alineado el 01-nov).
 - [ ] **Repos git anidados**: cada servicio tiene un `.git` vacío (rama `master` sin commits) que dejó Spring Initializr. Confunde al IDE y a git.
 - [ ] **`.gitignore` raíz**: incluye `TASKS.md`, pero el archivo ya está trackeado (la regla no tiene efecto). También lista `README-TAREAS.md`, que no existe.
 
@@ -78,12 +78,14 @@ Objetivo: que lo que "ya está hecho" funcione de verdad antes de sumar código 
 ### 1.0 Bloqueantes (hacer primero)
 
 - [x] **payment-service completo y coherente**: el servicio ya estaba en `origin/develop` (`d62e8bf`, `de778d0`). En PR #102 se alinearon jjwt a 0.11.5, Java 17 en el pom y `JwtProvider` con `security.jwt.secret`.
-- [ ] **Corregir lo que quedó pendiente en payment-service**:
+- [x] **Corregir lo que quedó pendiente en payment-service** (01-nov):
   - ~~`OrderHttpAdapter` no reenvía el JWT~~: resuelto con el token interno de servicio (`X-Internal-Token`), y el endpoint `/pay` ya existe en order-service.
-  - No hay forma de simular un pago `REJECTED`: con `@Positive` en `amount`, todo pago válido se aprueba.
-  - No se valida que `amount` coincida con el total del pedido.
-  - El parámetro `paymentToken` recibe el header `Authorization` pero no se usa.
-  - No tiene tests ni `ReadMe.md`.
+  - ~~No hay forma de simular un pago `REJECTED`~~: campo opcional `simulateResult: APPROVED | REJECTED` (si se omite, se aprueba). Un pago rechazado se guarda, pero no marca el pedido.
+  - ~~No se valida que `amount` coincida con el total del pedido~~: payment pide el pedido a order-service (`OrderPort.getOrder`), exige estado `CREATED` (409) y `amount` igual al total (400), antes de guardar nada.
+  - ~~El parámetro `paymentToken` no se usa~~: el JWT del usuario se reenvía en `GET /orders/{id}`, así order-service aplica su ownership y un CLIENT no puede pagar pedidos ajenos (403).
+  - ~~No tiene tests ni `ReadMe.md`~~: `PaymentApplicationServiceTest`, `PaymentControllerTest` y `payment-service/ReadMe.md`. `docs/openapi/payment.yaml` documenta `simulateResult` y los errores.
+- [ ] **Consistencia pago ↔ pedido**: si el pago `APPROVED` se guarda pero `/orders/{id}/pay` falla, quedan desalineados; y no hay idempotencia (dos requests simultáneos registran dos pagos). Ver "Limitaciones conocidas" en `payment-service/ReadMe.md`.
+- [ ] **`JwtAuthFilter` de payment no agrega el prefijo `ROLE_`** a los roles, a diferencia de los otros 4 servicios. Hoy no importa (solo se exige `authenticated()`), pero un `hasRole(...)` futuro nunca coincidiría.
 - [x] **Fase 1, Fase 2 de order y Fase 3 parcial presentes en `develop`**:
   - **Fase 1**: `CartMapper` persiste los items, `CatalogHttpAdapter` + `CatalogPort` inyectado en cart, ownership y `OrderResponse` en `GET /orders/{id}`, `GET /orders` funcionando, y en `UserController` la ruta sin `/admin/admin` y `listUsers` para ADMIN.
   - **Fase 2 de order-service**: `CreateOrderRequest` solo con `address`, `CartPort` / `CatalogPort` con sus adaptadores HTTP, precios verificados contra catalog, vaciado del carrito y `POST /orders/{id}/pay` y `/cancel`.
@@ -93,8 +95,8 @@ Objetivo: que lo que "ya está hecho" funcione de verdad antes de sumar código 
   - [x] **`POST /orders/{id}/pay` restringido a payment-service**: `InternalServiceAuthFilter` valida el header `X-Internal-Token` (comparación en tiempo constante) y asigna `ROLE_SERVICE`; `SecurityConfig` exige ese rol en `/orders/*/pay`. CLIENT y ADMIN reciben 403. payment-service envía el header desde `OrderHttpAdapter`. Configuración: `security.internal-token: ${INTERNAL_SERVICE_TOKEN:...}`, con el mismo valor en order y payment. Cubierto por 4 tests en `OrderControllerTest`.
   - [x] **Contrato cart → order alineado**: `CartResponse.item` renombrado a `items`, igual que `CartDto` de order y `cart.yaml`.
   - ~~El handler genérico convertía en 500 los 403, los 404, los JSON malformados y los errores de `RestClient`~~: resuelto (28-oct), ver 3.1.
-  - Flyway en catalog y order sin migraciones: si `catalog_db` / `order_db` ya tienen tablas creadas por `ddl-auto`, Flyway falla con *non-empty schema without history table*. Crear las `V1__` (3.4) o usar `baseline-on-migrate` mientras tanto.
-  - `OrderService` (capa de aplicación) importa `CartDto` del adaptador HTTP: mover un modelo equivalente al dominio o a `domain/ports/out`.
+  - ~~Flyway en catalog y order sin migraciones~~: resuelto (01-nov), ver 3.4. Las bases `dev` creadas antes por `ddl-auto` hay que recrearlas una vez.
+  - ~~`OrderService` importa `CartDto` del adaptador HTTP~~: resuelto (01-nov). `CartPort` devuelve `CartSnapshot` (`domain/model`, sin precios) y `CartHttpAdapter` traduce el DTO.
   - ~~`SecurityConfig` de auth bloqueaba a ADMIN en `/admin/**`~~: resuelto (29-oct), ver 1.3.
 - [x] **Hacer compilar order-service**: compila y pasa 9/9 tests (incluido `contextLoads`). `@Enumerated` sobre `String` lo quitó `ef16919`, y el mock de `JwtProvider` se agregó en `OrderControllerTest`.
 - [x] **Unificar la configuración JWT**: resuelto en `ef16919` (ver 0.1).
@@ -105,9 +107,9 @@ Objetivo: que lo que "ya está hecho" funcione de verdad antes de sumar código 
 - [x] **Corregir `"ROLE_ADMMIN"` → `"ROLE_ADMIN"`** en `OrderController`. *Por qué:* es la condición que decide si un usuario ve todos los pedidos (admin) o solo los suyos; con el typo, esa rama nunca se ejecuta.
 - [x] **Agregar validación de "ownership" en `GET /orders/{id}`**: hoy cualquier usuario autenticado puede ver el pedido de otro usuario solo sabiendo el ID. Hay que verificar que `order.getUserId()` sea igual al usuario autenticado, o que el usuario sea ADMIN/SUPER_ADMIN.
 - [x] **No devolver el modelo de dominio** en `GET /orders/{id}`: mapear a `OrderResponse`, igual que en el listado.
-- [ ] **Corregir los matchers de `SecurityConfig`**: usan `/order/**`, pero la ruta real es `/orders`, así que nunca coinciden.
-- [ ] **Quitar `@Enumerated` de `OrderEntity.status`** (es un `String`; o cambiar el tipo a `OrderStatus`, que es lo más limpio).
-- [ ] **Alinear versiones de jjwt** (`jjwt-impl` está en 0.12.6 y `jjwt-api` / `jjwt-jackson` en 0.11.5) y quitar `spring-boot-starter-oauth2-resource-server`, que no se usa.
+- [x] **Corregir los matchers de `SecurityConfig`** (01-nov): `/orders/**` exige CLIENT, ADMIN o SUPER_ADMIN (antes `/order/**` no coincidía con nada y bastaba cualquier token). Se quitó `/order/admin/**`, que no existe. `ROLE_SERVICE` sigue limitado a `/orders/*/pay`.
+- [x] **Quitar `@Enumerated` de `OrderEntity.status`** (ya resuelto en `ef16919`) (es un `String`; o cambiar el tipo a `OrderStatus`, que es lo más limpio).
+- [x] **Alinear versiones de jjwt** (01-nov): los 3 artefactos en 0.11.5, como el resto de servicios, y se quitó `spring-boot-starter-oauth2-resource-server`.
 
 ### 1.2 Cart-service
 
@@ -116,7 +118,7 @@ Objetivo: que lo que "ya está hecho" funcione de verdad antes de sumar código 
 - [x] **Evitar `LazyInitializationException`**: `CartJpaRepository.findByUserId` / `findById` usan `@EntityGraph(attributePaths = "items")` y `CartPersistenceAdapter.save` es `@Transactional`, así el mapeo ocurre con los items ya cargados. Lo cubre `CartPersistenceAdapterTest` (corre sin transacción de test, como en producción).
 - [x] **No se podía agregar un producto a un carrito ya guardado**: `CartMapper.toDomain` armaba los items con `.toList()` (lista inmutable) y `Cart.addProduct` lanzaba `UnsupportedOperationException` → 500. Ahora `Cart` copia la lista a un `ArrayList` y `getItems()` expone una vista de solo lectura.
 - [x] **Corregir `deleteByUserId`**: ahora usa la query derivada `CartJpaRepository.deleteByUserId` (antes llamaba a `deleteById(userId)`).
-- [ ] **Renombrar la migración** `v1__create_cart_tables.sql` → `V1__create_cart_tables.sql`, y pasar a `ddl-auto: validate` (ver 3.4).
+- [x] **Renombrar la migración** `v1__create_cart_tables.sql` → `V1__create_cart_tables.sql`, y pasar a `ddl-auto: validate` (01-nov, ver 3.4).
 - [x] **Quitar `price` de `AddItemRequest`**: se quitó del DTO y de `AddProductCartUseCase.addProduct`; el precio sale siempre de `CatalogPort` (y se consulta antes de tocar el carrito).
 - [x] **Validar los requests**: `@Valid` en el controller, `@NotNull productId` y `@Positive quantity` (mínimo 1 en ambos, como dice `cart.yaml`; para quitar un producto está `DELETE /cart/items/{productId}`).
 - [x] **Renombrar `CartResponse.item` → `items`**, como dice el contrato `cart.yaml`.
@@ -131,19 +133,19 @@ Objetivo: que lo que "ya está hecho" funcione de verdad antes de sumar código 
 - [x] **Permitir que ADMIN también liste usuarios** (29-oct): `SecurityConfig` usa `hasAnyRole("ADMIN", "SUPER_ADMIN")` en `/admin/**` y `changeRole` sigue exigiendo SUPER_ADMIN con `@PreAuthorize`; lo cubre `UserControllerTest`. Antes: mover el `@PreAuthorize("hasRole('SUPER_ADMIN')")` del nivel de clase al método `changeRole` únicamente, dejando `listUsers` accesible para ADMIN y SUPER_ADMIN (✅ hecho en `UserController`). **Falta**, cambiar en `SecurityConfig` `requestMatchers("/admin/**").hasRole("SUPER_ADMIN")` por `hasAnyRole("ADMIN", "SUPER_ADMIN")`; si no, el filtro sigue bloqueando a ADMIN antes de llegar al `@PreAuthorize`.
 - [x] **Proteger al SUPER_ADMIN** (29-oct): `User.changeRole` (reemplaza al `@Setter` de Lombok) rechaza asignar SUPER_ADMIN (400) y cambiar el rol de un SUPER_ADMIN (409). La validación salió del controller.
 - [x] **Rechazar el login de usuarios deshabilitados** (29-oct): `DisabledException` → 401. Se verifica después de la contraseña, para no revelar qué cuentas existen.
-- [ ] **Corregir la migración y activar Flyway**: agregar `fullname` y alinear la tabla de roles con la entidad (`@CollectionTable(name = "user_roles", joinColumns = @JoinColumn(name = "user_id"))` + `@Column(name = "role")`). Quitar `@Enumerated` de `Set<String> roles`.
+- [x] **Corregir la migración y activar Flyway** (01-nov, ver 3.4): agregar `fullname` y alinear la tabla de roles con la entidad (`@CollectionTable(name = "user_roles", joinColumns = @JoinColumn(name = "user_id"))` + `@Column(name = "role")`). Quitar `@Enumerated` de `Set<String> roles`.
 - [x] **Limpieza** (29-oct): se borró `SecuriryBeansConfig` (nadie usaba ese bean; el hash lo hace `BCryptPasswordEncoderAdapter`), se quitaron `extractUserId` / `extractEmail` de auth, cart y order, y los `JwtProvider` de los 4 servicios usan SLF4J (`debug` para tokens expirados, `warn` para el resto). Antes: eliminar el `PasswordEncoder` duplicado (`SecuriryBeansConfig`, que además tiene un typo en el nombre, o el adaptador), borrar `JwtProvider.extractUserId` / `extractEmail` (leen claims que no existen) y reemplazar `System.err` por un logger (SLF4J). Esta limpieza aplica también al `JwtProvider` de los otros servicios.
 - [x] **`LoginResponse.expiresIn`** tenía `3600` hardcodeado, pero el token dura 24 h. Ahora se calcula desde `security.jwt.expiration` (ms → s, 86400).
 
 ### 1.4 Catalog-service
 
-- [ ] **Corregir las validaciones de los DTOs** `CreateProductRequest` / `UpdateProductRequest`: `@NotNull @Positive` para `price`, `@PositiveOrZero` para `stock`, `@NotNull` para `categoryId`, y `@Valid` también en `update`. Validar `name` en las requests de categoría.
-- [ ] **Depender del puerto, no de la clase**: `ProductController` debe inyectar `ConfirmCategoryExistsUseCase`. Mejor aún, eliminar esa validación del controller, porque ya la hacen el servicio y el adaptador (hoy se valida tres veces).
-- [ ] **`PUT /products/{id}` no debe crear productos**: verificar que existan antes de guardar (hoy funciona como un *upsert*).
-- [ ] **No desactivar categorías con productos activos**: usar `existsByCategory`, que ya existe pero no se usa.
-- [ ] **Unificar `existsById` de categoría** para que ignore las inactivas, igual que `findById`.
-- [ ] **Códigos HTTP**: `201 Created` en los POST y `204 No Content` en los DELETE.
-- [ ] **Permitir Swagger** (`/swagger-ui/**`, `/v3/api-docs/**`) en `SecurityConfig`.
+- [x] **Corregir las validaciones de los DTOs** (01-nov: también `@Valid` en `PUT /products/{id}` y `@NotBlank name` en las requests de categoría) `CreateProductRequest` / `UpdateProductRequest`: `@NotNull @Positive` para `price`, `@PositiveOrZero` para `stock`, `@NotNull` para `categoryId`, y `@Valid` también en `update`. Validar `name` en las requests de categoría.
+- [x] **Depender del puerto, no de la clase** (01-nov): se eliminó la validación del controller y su dependencia de `CategoryApplicationService`; la hace solo `ProductApplicationService` (el adaptador la mantiene como respaldo, ahora con 404).
+- [x] **`PUT /products/{id}` no debe crear productos** (01-nov): responde 404 si no existe (activo o no, para poder reactivarlo) y valida que la categoría esté activa.
+- [x] **No desactivar categorías con productos activos** (01-nov): `DELETE /categories/{id}` responde 409 usando `existsByCategory`.
+- [x] **Unificar `existsById` de categoría** (01-nov): usa `existsByIdAndActiveTrue`. Además, desactivar un producto o categoría inexistente ahora da 404 (antes 400).
+- [x] **Códigos HTTP** (01-nov): `201 Created` en los POST y `204 No Content` en los DELETE, como dice `catalog.yaml`.
+- [x] **Permitir Swagger** (01-nov): `/swagger-ui.html`, `/swagger-ui/**` y `/v3/api-docs/**` son públicos.
 
 ---
 
@@ -166,16 +168,16 @@ Esta es la fase más importante para entender **cómo se comunican los microserv
 
 ### 2.3 Payment-service (microservicio nuevo)
 
-- [ ] Crear el módulo `payment-service/` replicando la estructura hexagonal de los demás servicios (`domain/model`, `domain/port/in|out`, `application/service`, `adapter/in/rest`, `adapter/out/persistence`, `config`).
-- [ ] Modelo de dominio `Payment` (id, orderId, amount, status `APPROVED`/`REJECTED`, transactionId, fecha).
-- [ ] Caso de uso `ProcessPaymentUseCase`: simula el resultado del pago (por ejemplo, aprobar si el monto es válido, o según un flag de prueba en el request — es un mock, no una pasarela real).
-- [ ] Endpoint `POST /payments/process`, protegido con JWT, conforme al contrato ya definido en `docs/openapi/payment.yaml`.
-- [ ] Cuando el pago se aprueba: payment-service llama a `POST /orders/{id}/pay` en order-service (cliente HTTP, igual que hicimos con `CatalogPort`/`CartPort`).
-- [ ] Persistir cada intento de pago en su propia base de datos (tabla `payments`, con su migración Flyway), aunque sea simulado — sirve para auditoría y para practicar el patrón "una DB por microservicio".
-- [ ] Archivos `application.yaml`, `application-dev.yaml`, `application-test.yaml` (puerto sugerido: 8085, ya reservado en el OpenAPI).
-- [ ] Definir en `payment.yaml` cómo forzar un pago rechazado (por ejemplo, un campo `simulateResult: APPROVED | REJECTED`) y las respuestas de error (400/404/409).
+- [x] Crear el módulo `payment-service/` replicando la estructura hexagonal de los demás servicios (`domain/model`, `domain/port/in|out`, `application/service`, `adapter/in/rest`, `adapter/out/persistence`, `config`).
+- [x] Modelo de dominio `Payment` (id, orderId, amount, status `APPROVED`/`REJECTED`, transactionId, fecha).
+- [x] Caso de uso `ProcessPaymentUseCase`: simula el resultado del pago (por ejemplo, aprobar si el monto es válido, o según un flag de prueba en el request — es un mock, no una pasarela real).
+- [x] Endpoint `POST /payments/process`, protegido con JWT, conforme al contrato ya definido en `docs/openapi/payment.yaml`.
+- [x] Cuando el pago se aprueba: payment-service llama a `POST /orders/{id}/pay` en order-service (cliente HTTP, igual que hicimos con `CatalogPort`/`CartPort`).
+- [x] Persistir cada intento de pago en su propia base de datos (tabla `payments`, con su migración Flyway), aunque sea simulado — sirve para auditoría y para practicar el patrón "una DB por microservicio".
+- [ ] Archivos `application.yaml`, `application-dev.yaml`, `application-test.yaml` (puerto sugerido: 8085, ya reservado en el OpenAPI). Hoy solo existe `application.yml`, con variables de entorno.
+- [x] Definir en `payment.yaml` cómo forzar un pago rechazado (por ejemplo, un campo `simulateResult: APPROVED | REJECTED`) y las respuestas de error (400/404/409).
 
-> Nota: varias de estas piezas ya existieron (dominio, puertos, handler de errores, migración, `application.yml`) y se perdieron. Ver la tarea de recuperación en 1.0.
+> Nota (01-nov): el servicio está completo salvo los perfiles `dev` / `test`; ver los pendientes de payment-service en 1.0.
 
 ---
 
@@ -198,21 +200,34 @@ Esta es la fase más importante para entender **cómo se comunican los microserv
 
 ### 3.2 Configuración y secretos
 
-- [ ] Mover todo secreto (JWT secret, credenciales de DB, password del super admin) a variables de entorno, usando la sintaxis `${VARIABLE:valor-por-defecto}` en los YAML, y crear un perfil `application-prod.yml` por servicio.
-- [ ] Usar **el mismo valor de `JWT_SECRET`** en los 5 servicios en producción (se define una vez como variable de entorno y se repite en cada servicio de Render). *Por qué:* auth-service firma el token con ese secreto; si otro servicio usa un secreto distinto para *verificar* la firma, el token siempre se rechaza aunque sea válido.
-- [ ] Agregar `spring-boot-starter-actuator` a los 5 servicios y exponer `/actuator/health`. (La dependencia ya está en los 5; falta exponer `health` en los YAML de auth, catalog, cart y order, y permitir `/actuator/health` en cada `SecurityConfig`.) *Por qué:* es el endpoint que Render (y cualquier orquestador) usa para saber si tu servicio sigue vivo.
-- [ ] Hacer que el puerto del servidor lea la variable `PORT` (`server.port=${PORT:8081}`), porque Render asigna el puerto dinámicamente vía esa variable de entorno.
-- [ ] Usar **un mismo nombre de propiedad** en los 5 servicios (`security.jwt.secret`, `security.jwt.expiration`). Hoy conviven `security.jwt.*`, `spring.jwt.*` y `spring.security.jwt.*`; las dos últimas no son propiedades de Spring y solo generan confusión.
-- [ ] **Alinear versiones**: misma versión de Spring Boot en todos los `pom.xml`, springdoc `2.8.x` (compatible con Boot 3.5) en los 5 servicios, y la misma versión de jjwt en sus 3 artefactos. *Por qué:* las versiones mezcladas producen errores en tiempo de ejecución (`NoSuchMethodError`) que no aparecen al compilar. (Opcional: un `pom.xml` padre en la raíz para declararlas una sola vez.)
+- [x] Mover todo secreto a variables de entorno y crear un perfil `application-prod` por servicio (01-nov):
+  - Datasource: `SPRING_DATASOURCE_URL` / `SPRING_DATASOURCE_USERNAME` / `SPRING_DATASOURCE_PASSWORD` en los 5 (los mismos nombres que ya usaba payment). En `dev` tienen como valor por defecto el Postgres local.
+  - auth: `ADMIN_EMAIL`, `ADMIN_FULLNAME`, `ADMIN_PASSWORD` para el SUPER_ADMIN inicial.
+  - URLs entre servicios declaradas en los YAML: `CATALOG_SERVICE_URL` (cart, order), `CART_SERVICE_URL` (order), `ORDER_SERVICE_URL` (payment).
+  - `application-prod.y(a)ml` en los 5: **sin valores por defecto** para datasource, `JWT_SECRET`, `INTERNAL_SERVICE_TOKEN` (order, payment), `ADMIN_EMAIL` / `ADMIN_PASSWORD` (auth) ni `CORS_ALLOWED_ORIGINS`. Si falta alguna, el servicio no arranca, en vez de arrancar con el valor de desarrollo. También apaga `show-sql`.
+  - `ddl-auto: validate` en prod en los 5 (desde 3.4).
+  - **No verificado en ejecución**: los tests no cargan el perfil `prod`. Probarlo al armar el `docker-compose` (Fase 5).
+- [ ] Usar **el mismo valor de `JWT_SECRET`** en los 5 servicios en producción (los 5 ya lo leen de la misma variable; falta cargarla en Render, Fase 7) (se define una vez como variable de entorno y se repite en cada servicio de Render). *Por qué:* auth-service firma el token con ese secreto; si otro servicio usa un secreto distinto para *verificar* la firma, el token siempre se rechaza aunque sea válido.
+- [x] Exponer `/actuator/health` en los 5 servicios (01-nov): `management.endpoints.web.exposure.include: health,info`, probes `liveness` / `readiness` activados y `/actuator/health/**` público en cada `SecurityConfig`. *Por qué:* es el endpoint que Render (y cualquier orquestador) usa para saber si tu servicio sigue vivo.
+- [x] Hacer que el puerto del servidor lea la variable `PORT` (01-nov): `server.port: ${PORT:808x}` en los 5; en catalog el puerto estaba solo en el perfil `dev`, se movió al YAML base.
+- [x] Usar **un mismo nombre de propiedad** en los 5 servicios (resuelto en `ef16919`) (`security.jwt.secret`, `security.jwt.expiration`). Hoy conviven `security.jwt.*`, `spring.jwt.*` y `spring.security.jwt.*`; las dos últimas no son propiedades de Spring y solo generan confusión.
+- [x] **Alinear versiones** (01-nov): Spring Boot 3.5.11 en los 5 `pom.xml`, springdoc 2.8.17 en los 5 (se agregó a cart, order y payment, con Swagger público en sus `SecurityConfig`) y jjwt 0.11.5 en sus 3 artefactos. Queda opcional el `pom.xml` padre. *Por qué:* las versiones mezcladas producen errores en tiempo de ejecución (`NoSuchMethodError`) que no aparecen al compilar. (Opcional: un `pom.xml` padre en la raíz para declararlas una sola vez.)
 
 ### 3.3 CORS
 
-- [ ] Replicar en cart-service, catalog-service, order-service y payment-service la misma configuración CORS que ya existe en auth-service, parametrizando los orígenes permitidos por variable de entorno (para poder apuntar al dominio real del frontend).
+- [x] CORS en los 5 servicios (01-nov): `config/CorsConfig` lee `cors.allowed-origins` (`CORS_ALLOWED_ORIGINS`, separados por coma; en dev `http://localhost:5001,http://localhost:5173`) y cada `SecurityConfig` lo activa con `.cors(Customizer.withDefaults())`. El bean hardcodeado de auth se movió ahí. Solo se permiten los headers `Authorization` y `Content-Type`. Lo cubre `CorsConfigTest` en cart (preflight permitido y rechazado).
 
 ### 3.4 Migraciones de base de datos
 
-- [ ] Agregar migraciones Flyway (`db/migration/V1__...sql`) a catalog-service y order-service (auth-service y cart-service tienen una, pero rota: ver 1.2 y 1.3). *Por qué:* usar `ddl-auto: update` está bien para prototipar, pero en producción el esquema debe crearse de forma explícita y versionada.
-- [ ] Agregar `flyway-core` + `flyway-database-postgresql` donde falten (catalog-service tiene `flyway.enabled: true`, pero no la dependencia) y pasar a `ddl-auto: validate` en dev/prod. Así Hibernate avisa si la entidad y la migración no coinciden, que es justo el problema actual de auth-service.
+- [x] Migraciones `V1__` en los 5 servicios (01-nov). *Por qué:* `ddl-auto: update` sirve para prototipar, pero en producción el esquema debe crearse de forma explícita y versionada.
+  - auth: se agregó `fullname` a `V1__create_users_table.sql`, y `UserJpaEntity.roles` ahora mapea a esa tabla con `@CollectionTable(name = "user_roles", joinColumns = @JoinColumn(name = "user_id"))` y `@Column(name = "role")`. Se quitó `@Enumerated` (no aplica a `Set<String>`).
+  - cart: `v1__` → `V1__create_cart_tables.sql` (Flyway lo ignoraba), con índices en `carts.user_id` y `cart_items.cart_id`.
+  - catalog: `V1__create_catalog_tables.sql` (`categories`, `products` con FK e índice en `category_id`).
+  - order: `V1__create_order_tables.sql` (`orders`, `order_items` y la secuencia `order_items_seq` con `INCREMENT BY 50`, que es la que pide `@GeneratedValue` en `OrderItemEntity`).
+  - `FlywayMigrationTest` en auth, cart, catalog y order: aplica las migraciones sobre H2 en modo PostgreSQL y levanta Hibernate con `ddl-auto=validate`. Si la entidad y el esquema no coinciden, el test falla. payment no lo tiene porque no tiene H2 como dependencia de test.
+  - Los `contextLoads` de auth y order se conectaban a las bases `dev` reales (no tenían perfil): ahora usan `@ActiveProfiles("test")`. Al perfil `test` de auth se le agregó el bloque `admin`, y al de order `flyway.enabled: false`.
+  - **Bases `dev` existentes**: las tablas que creó `ddl-auto` chocan con `V1__` (*relation already exists* o *non-empty schema without history table*). Hay que recrear `auth_db`, `cart_db`, `catalog_db` y `order_db` una vez. El SUPER_ADMIN lo vuelve a crear `SuperAdminInitializer`. **No probado contra Postgres real** (solo con H2 en modo PostgreSQL).
+- [x] `flyway-core` + `flyway-database-postgresql` en los 5 (a auth le faltaba el segundo), Flyway activo y `ddl-auto: validate` en `dev` y `prod` (01-nov). Así Hibernate avisa si la entidad y la migración no coinciden, que es justo el problema actual de auth-service.
 
 ### 3.5 Higiene del repositorio
 
@@ -233,7 +248,7 @@ Con ~25 tests en todo el repo, casi todos "happy path" sobre controllers, falta 
 - [x] **`contextLoads` de cart sin Postgres**: H2 en scope test y `@ActiveProfiles("test")`. (Order y auth todavía dependen de Postgres local.)
 
 - [ ] **Tests de dominio puro** (clases `Order`, `Cart`, `User`, `Product`, sin Spring): probar transiciones de estado inválidas (pagar un pedido cancelado, agregar cantidad negativa, etc.) y las invariantes del constructor.
-- [ ] **Tests de casos de uso** con los puertos de salida mockeados (Mockito). `CartApplicationServiceTest` ya existe (28-oct); faltan los de catalog (parcial), auth y payment.
+- [ ] **Tests de casos de uso** con los puertos de salida mockeados (Mockito). `CartApplicationServiceTest` ya existe (28-oct); `PaymentApplicationServiceTest` también (01-nov); faltan los de catalog (parcial) y auth.
 - [ ] **Tests de seguridad**: para cada servicio, verificar 401 sin token, 403 con rol insuficiente, y que un CLIENT no pueda llegar a endpoints de ADMIN.
 - [ ] **Tests de integración entre servicios**: simular las respuestas de catalog-service/cart-service/order-service con WireMock o `MockWebServer`, para probar el flujo completo sin levantar los 5 servicios reales.
 - [ ] **Tests de persistencia** (`@DataJpaTest`) para los mappers JPA↔dominio, al menos en catalog-service y order-service.
@@ -270,7 +285,7 @@ Con ~25 tests en todo el repo, casi todos "happy path" sobre controllers, falta 
 
 ## Fase 8 — Documentación final
 
-- [ ] Agregar `cart-service/ReadMe.md`, `order-service/ReadMe.md` y `payment-service/ReadMe.md` (auth-service y catalog-service ya tienen el suyo).
+- [ ] Agregar `cart-service/ReadMe.md` y `order-service/ReadMe.md` (auth, catalog y payment ya tienen el suyo).
 - [ ] **Corregir `auth-service/ReadMe.md`**:
   - el ejemplo de registro manda `"roles": ["SUPER_ADMIN"]` (contradice la regla 1.1) y no incluye `fullname`, que es obligatorio;
   - la respuesta del login es `accessToken` / `tokenType` / `expiresIn`, no `token`;

@@ -1,5 +1,6 @@
 package com.e_commerce.catalog_service.service;
 
+import com.e_commerce.catalog_service.domain.exception.ResourceNotFoundException;
 import com.e_commerce.catalog_service.application.service.ProductApplicationService;
 import com.e_commerce.catalog_service.domain.model.Category;
 import com.e_commerce.catalog_service.domain.model.Product;
@@ -47,8 +48,8 @@ class ProductServiceTest {
         UUID categoryId = UUID.randomUUID();
         Category category = new Category(categoryId, "Electronics", true);
 
-        when(categoryRepository.findById(any(UUID.class)))
-                .thenReturn(Optional.of(category));
+        when(categoryRepository.existsById(any(UUID.class)))
+                .thenReturn(true);
 
         when(productRepository.save(any()))
                 .thenAnswer(inv -> inv.getArgument(0));
@@ -79,5 +80,28 @@ class ProductServiceTest {
         service.deleteById(id);
 
         verify(productRepository).deactivate(id);
+    }
+
+    @Test
+    void updateShouldNotCreateMissingProduct() {
+        Product product = new Product(UUID.randomUUID(), "TV", "LCD", BigDecimal.TEN, 1,
+                new Category(UUID.randomUUID(), "Electronics", true), true);
+        when(productRepository.existsById(product.getId())).thenReturn(false);
+
+        assertThrows(ResourceNotFoundException.class, () -> service.update(product));
+
+        verify(productRepository, never()).save(any());
+    }
+
+    @Test
+    void updateShouldRejectInactiveCategory() {
+        Product product = new Product(UUID.randomUUID(), "TV", "LCD", BigDecimal.TEN, 1,
+                new Category(UUID.randomUUID(), "Electronics", true), true);
+        when(productRepository.existsById(product.getId())).thenReturn(true);
+        when(categoryRepository.existsById(product.getCategory().getId())).thenReturn(false);
+
+        assertThrows(ResourceNotFoundException.class, () -> service.update(product));
+
+        verify(productRepository, never()).save(any());
     }
 }

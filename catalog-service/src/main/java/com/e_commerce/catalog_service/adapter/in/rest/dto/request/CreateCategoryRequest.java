@@ -1,5 +1,7 @@
 package com.e_commerce.catalog_service.adapter.in.rest.dto.request;
 
+import jakarta.validation.constraints.NotBlank;
+
 
 /**
  * DTO de solicitud utilizado para crear una nueva categoría en el catálogo.
@@ -7,5 +9,5 @@ package com.e_commerce.catalog_service.adapter.in.rest.dto.request;
  * Contiene el nombre requerido para registrar una categoría a través de la API REST.
  * </p>
  */
-public record CreateCategoryRequest(String name) {
+public record CreateCategoryRequest(@NotBlank String name) {
 }

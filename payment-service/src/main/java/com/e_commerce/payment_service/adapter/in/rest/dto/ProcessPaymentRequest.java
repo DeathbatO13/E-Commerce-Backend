@@ -1,5 +1,6 @@
 package com.e_commerce.payment_service.adapter.in.rest.dto;
 
+import com.e_commerce.payment_service.domain.model.PaymentStatus;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 
@@ -12,5 +13,8 @@ public record ProcessPaymentRequest(
 
         @NotNull(message = "Amount is required")
         @Positive(message = "Amount must be positive")
-        BigDecimal amount
+        BigDecimal amount,
+
+        // Opcional (mock): APPROVED | REJECTED. Si no se envía, el pago se aprueba.
+        PaymentStatus simulateResult
 ) {}

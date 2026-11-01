@@ -1,7 +1,7 @@
 package com.e_commerce.order_service.application.service;
 
+import com.e_commerce.order_service.domain.model.CartSnapshot;
 import com.e_commerce.order_service.domain.exception.ResourceNotFoundException;
-import com.e_commerce.order_service.adapter.out.http.dto.CartDto;
 import com.e_commerce.order_service.domain.model.Order;
 import com.e_commerce.order_service.domain.model.OrderItem;
 import com.e_commerce.order_service.domain.ports.in.CancelOrderUseCase;
@@ -32,18 +32,18 @@ public class OrderService implements CreateOrderUseCase, GetOrderUseCase, PayOrd
 
     @Override
     public UUID createOrder(UUID userId, String address, String authorizationToken) {
-        CartDto cart = cartPort.getActiveCart(userId, authorizationToken);
+        CartSnapshot cart = cartPort.getActiveCart(userId, authorizationToken);
 
-        if (cart == null || cart.items() == null || cart.items().isEmpty()) {
+        if (cart == null || cart.isEmpty()) {
             throw new IllegalArgumentException("Cart is empty or not found for user: " + userId);
         }
 
         List<OrderItem> items = new ArrayList<>();
         BigDecimal calculatedTotal = BigDecimal.ZERO;
 
-        for (var itemDto : cart.items()) {
-            BigDecimal verifiedPrice = catalogPort.getProductPrice(itemDto.productId());
-            OrderItem item = new OrderItem(itemDto.productId(), itemDto.quantity(), verifiedPrice);
+        for (CartSnapshot.Item cartItem : cart.items()) {
+            BigDecimal verifiedPrice = catalogPort.getProductPrice(cartItem.productId());
+            OrderItem item = new OrderItem(cartItem.productId(), cartItem.quantity(), verifiedPrice);
             items.add(item);
             calculatedTotal = calculatedTotal.add(item.getSubtotal());
         }

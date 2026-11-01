@@ -4,15 +4,29 @@ spring:
   profiles:
     active: dev
   flyway:
-    enabled: false
+    enabled: true
   jpa:
     open-in-view: false
     show-sql: true
 
 server:
-  port: 8081
+  port: ${PORT:8081}
 
 security:
   jwt:
     secret: ${JWT_SECRET:mySuperSecretKey12345678901234567890123456789012}
     expiration: ${JWT_EXPIRATION:86400000}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+# Orígenes del frontend, separados por coma (ver CorsConfig)
+cors:
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5001,http://localhost:5173}

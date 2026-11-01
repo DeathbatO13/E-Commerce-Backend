@@ -1,6 +1,7 @@
 package com.e_commerce.order_service.config;
 
 
+import org.springframework.security.config.Customizer;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -29,14 +30,18 @@ public class SecurityConfig{
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception{
 
         return http
+                // Usa el bean CorsConfigurationSource de CorsConfig
+                .cors(Customizer.withDefaults())
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(sm ->
                         sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
+                        .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         // Solo payment-service (token interno) puede marcar un pedido como pagado
                         .requestMatchers(HttpMethod.POST, "/orders/*/pay").hasRole(InternalServiceAuthFilter.ROLE)
-                        .requestMatchers("/order/admin/**").hasRole("SUPER_ADMIN")
-                        .requestMatchers("/order/**").hasAnyRole("ADMIN", "CLIENT")
+                        // OrderController decide qué pedidos ve cada uno (ADMIN y SUPER_ADMIN ven todos)
+                        .requestMatchers("/orders/**").hasAnyRole("CLIENT", "ADMIN", "SUPER_ADMIN")
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(internalServiceAuthFilter, JwtAuthFilter.class)

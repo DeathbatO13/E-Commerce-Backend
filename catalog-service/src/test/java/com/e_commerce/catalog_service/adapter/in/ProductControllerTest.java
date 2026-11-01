@@ -1,7 +1,8 @@
 package com.e_commerce.catalog_service.adapter.in;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import com.e_commerce.catalog_service.adapter.in.rest.ProductController;
-import com.e_commerce.catalog_service.application.service.CategoryApplicationService;
 import com.e_commerce.catalog_service.config.JwtProvider;
 import com.e_commerce.catalog_service.config.SecurityConfig;
 import com.e_commerce.catalog_service.domain.exception.ResourceNotFoundException;
@@ -59,8 +60,6 @@ class ProductControllerTest {
     @MockitoBean
     private DeleteProductUseCase deleteProductUseCase;
 
-    @MockitoBean
-    private CategoryApplicationService categoryService;
 
     @MockitoBean
     private JwtProvider jwtProvider;
@@ -83,7 +82,6 @@ class ProductControllerTest {
                 true
         );
 
-        when(categoryService.existsById(categoryId)).thenReturn(true);
         when(createProductUseCase.create(any(Product.class)))
                 .thenReturn(product);
 
@@ -98,7 +96,7 @@ class ProductControllerTest {
                             "categoryId": "%s"
                         }
                         """.formatted(categoryId)))
-                .andExpect(status().isOk())
+                .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.name").value("Laptop"))
                 .andExpect(jsonPath("$.price").value(1600))
                 .andExpect(jsonPath("$.active").value(true));
@@ -173,7 +171,8 @@ class ProductControllerTest {
     @WithMockUser(roles = "ADMIN")
     void shouldReturn404WhenCategoryDoesNotExist() throws Exception {
         UUID categoryId = UUID.randomUUID();
-        when(categoryService.existsById(categoryId)).thenReturn(false);
+        when(createProductUseCase.create(any(Product.class)))
+                .thenThrow(new ResourceNotFoundException("Category not found"));
 
         mockMvc.perform(post("/products")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -186,8 +185,61 @@ class ProductControllerTest {
                             "categoryId": "%s"
                         }
                         """.formatted(categoryId)))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message").value("Category not found"));
+    }
 
-        verify(createProductUseCase, never()).create(any(Product.class));
+    /**
+     * Verifica que PUT sobre un producto inexistente responde 404 en vez de crearlo.
+     */
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void shouldReturn404WhenUpdatingMissingProduct() throws Exception {
+        when(updateProductUseCase.update(any(Product.class)))
+                .thenThrow(new ResourceNotFoundException("Product not found"));
+
+        mockMvc.perform(put("/products/{id}", UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                        {
+                            "name": "Laptop",
+                            "description": "Gaming Laptop",
+                            "price": 1600,
+                            "stock": 10,
+                            "categoryId": "%s",
+                            "active": true
+                        }
+                        """.formatted(UUID.randomUUID())))
+                .andExpect(status().isNotFound());
+    }
+
+    /**
+     * Verifica que PUT también valida el cuerpo.
+     */
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void shouldRejectUpdateWithoutCategory() throws Exception {
+        mockMvc.perform(put("/products/{id}", UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                        { "name": "Laptop", "description": "Gaming Laptop", "price": 1600, "stock": 10, "active": true }
+                        """))
+                .andExpect(status().isBadRequest());
+
+        verify(updateProductUseCase, never()).update(any(Product.class));
+    }
+
+    /**
+     * Verifica que DELETE responde 204 No Content.
+     */
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void shouldReturn204WhenDeletingProduct() throws Exception {
+        UUID productId = UUID.randomUUID();
+
+        mockMvc.perform(delete("/products/{id}", productId))
+                .andExpect(status().isNoContent());
+
+        verify(deleteProductUseCase).deleteById(productId);
     }
 }
