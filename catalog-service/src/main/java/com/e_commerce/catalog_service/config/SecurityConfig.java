@@ -1,6 +1,7 @@
 package com.e_commerce.catalog_service.config;
 
 
+import org.springframework.security.config.Customizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -27,12 +28,17 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http)
         throws Exception{
 
-            http.csrf(AbstractHttpConfigurer::disable)
+            // Usa el bean CorsConfigurationSource de CorsConfig
+            http.cors(Customizer.withDefaults())
+                .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(sm ->
                         sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                     .requestMatchers(HttpMethod.GET, "/products/**", "/categories/**")
                         .permitAll()
+                        .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**")
+                        .permitAll()
+                        .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
                         .requestMatchers("/products/**", "/categories/**")
                         .hasAnyRole("ADMIN", "SUPER_ADMIN")
                         .anyRequest().authenticated());

@@ -1,5 +1,5 @@
 server:
-  port: 8084
+  port: ${PORT:8084}
 
 spring:
   application:
@@ -18,6 +18,28 @@ security:
   # Token compartido con payment-service para POST /orders/{id}/pay (mismo valor en ambos servicios)
   internal-token: ${INTERNAL_SERVICE_TOKEN:dev-internal-token-change-me}
 
+cart:
+  service:
+    url: ${CART_SERVICE_URL:http://localhost:8083}
+
+catalog:
+  service:
+    url: ${CATALOG_SERVICE_URL:http://localhost:8082}
+
 logging:
   level:
     root: INFO
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+# Orígenes del frontend, separados por coma (ver CorsConfig)
+cors:
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5001,http://localhost:5173}

@@ -1,5 +1,6 @@
 package com.e_commerce.catalog_service.adapter.out.persistence;
 
+import com.e_commerce.catalog_service.domain.exception.ResourceNotFoundException;
 import com.e_commerce.catalog_service.adapter.out.persistence.entity.CategoryJpaEntity;
 import com.e_commerce.catalog_service.adapter.out.persistence.entity.ProductJpaEntity;
 import com.e_commerce.catalog_service.adapter.out.persistence.mapper.ProductMapper;
@@ -42,7 +43,7 @@ public class ProductAdapter implements ProductRepository {
     @Override
     public Product save(Product product) {
         CategoryJpaEntity categoryEntity = categoryJpaRepository.findById(product.getCategory().getId())
-                .orElseThrow(() -> new IllegalArgumentException("Category not found with ID: " + product.getCategory().getId()));
+                .orElseThrow(() -> new ResourceNotFoundException("Category not found with ID: " + product.getCategory().getId()));
 
         ProductJpaEntity entity = ProductMapper.toEntity(product);
         entity.setCategory(categoryEntity);
@@ -115,7 +116,7 @@ public class ProductAdapter implements ProductRepository {
     @Override
     public void deactivate(UUID id) {
         ProductJpaEntity entity = productJpaRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Product not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Product not found"));
         entity.setActive(false);
     }
 
@@ -128,5 +129,10 @@ public class ProductAdapter implements ProductRepository {
     @Override
     public boolean existsByCategory(UUID categoryId) {
         return productJpaRepository.existsByCategoryIdAndActiveTrue(categoryId);
+    }
+
+    @Override
+    public boolean existsById(UUID id) {
+        return productJpaRepository.existsById(id);
     }
 }

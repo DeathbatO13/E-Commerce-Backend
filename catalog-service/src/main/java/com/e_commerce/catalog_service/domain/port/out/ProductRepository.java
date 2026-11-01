@@ -65,4 +65,9 @@ public interface ProductRepository {
      * @return true si hay productos en la categoría
      */
     boolean existsByCategory(UUID categoryId);
+
+    /**
+     * Indica si el producto existe, esté activo o no (un PUT puede reactivarlo).
+     */
+    boolean existsById(UUID id);
 }

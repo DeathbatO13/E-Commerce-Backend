@@ -1,5 +1,6 @@
 package com.e_commerce.payment_service.application.service;
 
+import com.e_commerce.payment_service.domain.model.OrderSummary;
 import com.e_commerce.payment_service.domain.model.Payment;
 import com.e_commerce.payment_service.domain.model.PaymentStatus;
 import com.e_commerce.payment_service.domain.port.in.ProcessPaymentUseCase;
@@ -20,17 +21,28 @@ public class PaymentApplicationService implements ProcessPaymentUseCase {
     }
 
     @Override
-    public Payment processPayment(UUID orderId, BigDecimal amount, String paymentToken) {
-        // Simulación del resultado del pago (Mock pasarela)
-        // Se aprueba si la transacción o monto es válido
-        boolean isApproved = amount != null && amount.compareTo(BigDecimal.ZERO) > 0;
-        PaymentStatus status = isApproved ? PaymentStatus.APPROVED : PaymentStatus.REJECTED;
+    public Payment processPayment(UUID orderId, BigDecimal amount, PaymentStatus simulatedResult,
+                                  String authorizationToken) {
+
+        // order-service aplica el ownership: un CLIENT recibe 403 si el pedido es de otro usuario
+        OrderSummary order = orderPort.getOrder(orderId, authorizationToken);
+
+        if (!order.isPendingPayment()) {
+            throw new IllegalStateException("Order " + orderId + " is not pending payment (status: "
+                    + order.status() + ")");
+        }
+        if (order.total() == null || order.total().compareTo(amount) != 0) {
+            throw new IllegalArgumentException("Amount " + amount + " does not match order total "
+                    + order.total());
+        }
+
+        // Pasarela simulada: el cliente puede forzar REJECTED para probar ese flujo
+        PaymentStatus status = simulatedResult != null ? simulatedResult : PaymentStatus.APPROVED;
         String transactionId = "TX-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
 
-        Payment payment = new Payment(orderId, amount, status, transactionId);
-        Payment savedPayment = paymentRepository.save(payment);
+        Payment savedPayment = paymentRepository.save(new Payment(orderId, amount, status, transactionId));
 
-        if (isApproved) {
+        if (status == PaymentStatus.APPROVED) {
             orderPort.markOrderAsPaid(orderId);
         }
 

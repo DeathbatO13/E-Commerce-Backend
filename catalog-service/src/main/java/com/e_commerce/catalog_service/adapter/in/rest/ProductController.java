@@ -1,10 +1,9 @@
 package com.e_commerce.catalog_service.adapter.in.rest;
 
-import com.e_commerce.catalog_service.domain.exception.ResourceNotFoundException;
+import org.springframework.http.HttpStatus;
 import com.e_commerce.catalog_service.adapter.in.rest.dto.request.CreateProductRequest;
 import com.e_commerce.catalog_service.adapter.in.rest.dto.request.UpdateProductRequest;
 import com.e_commerce.catalog_service.adapter.in.rest.dto.response.ProductResponse;
-import com.e_commerce.catalog_service.application.service.CategoryApplicationService;
 import com.e_commerce.catalog_service.domain.model.Category;
 import com.e_commerce.catalog_service.domain.model.Product;
 import com.e_commerce.catalog_service.domain.port.in.*;
@@ -30,21 +29,18 @@ public class ProductController {
     private final GetProductUseCase getProductUseCase;
     private final UpdateProductUseCase updateProductUseCase;
     private final DeleteProductUseCase deleteProductUseCase;
-    private final CategoryApplicationService categoryService;
 
     public ProductController(
             CreateProductUseCase createProductUseCase,
             ListProductUseCase listProductsUseCase,
             GetProductUseCase getProductUseCase,
             UpdateProductUseCase updateProductUseCase,
-            DeleteProductUseCase deleteProductUseCase,
-            CategoryApplicationService categoryService) {
+            DeleteProductUseCase deleteProductUseCase) {
         this.createProductUseCase = createProductUseCase;
         this.listProductsUseCase = listProductsUseCase;
         this.getProductUseCase = getProductUseCase;
         this.updateProductUseCase = updateProductUseCase;
         this.deleteProductUseCase = deleteProductUseCase;
-        this.categoryService = categoryService;
     }
 
     /**
@@ -72,11 +68,10 @@ public class ProductController {
      * @return respuesta con los datos del producto creado
      */
     @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
     public ProductResponse create(@Valid @RequestBody CreateProductRequest request) {
 
-        if(!categoryService.existsById(request.categoryId()))
-            throw new ResourceNotFoundException("Category not found");
-
+        // La existencia de la categoría la valida ProductApplicationService
         var product = createProductUseCase.create(
                 new Product(
                         UUID.randomUUID(),
@@ -138,7 +133,7 @@ public class ProductController {
     @PutMapping("/{id}")
     public ProductResponse update(
             @PathVariable UUID id,
-            @RequestBody UpdateProductRequest request
+            @Valid @RequestBody UpdateProductRequest request
     ) {
         var product = updateProductUseCase.update(
                 new Product(
@@ -161,6 +156,7 @@ public class ProductController {
      * @param id identificador del producto a eliminar
      */
     @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable UUID id) {
         deleteProductUseCase.deleteById(id);
     }

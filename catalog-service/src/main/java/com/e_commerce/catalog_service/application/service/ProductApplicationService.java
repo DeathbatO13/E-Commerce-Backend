@@ -42,9 +42,7 @@ public class ProductApplicationService implements
      */
     @Override
     public Product create(Product product) {
-        if (!categoryRepository.findById(product.getCategory().getId()).isPresent()) {
-            throw new ResourceNotFoundException("Category not found");
-        }
+        requireActiveCategory(product);
         return productRepository.save(product);
     }
 
@@ -109,7 +107,18 @@ public class ProductApplicationService implements
      */
     @Override
     public Product update(Product product) {
+        // PUT no debe crear productos: antes funcionaba como upsert
+        if (!productRepository.existsById(product.getId())) {
+            throw new ResourceNotFoundException("Product not found");
+        }
+        requireActiveCategory(product);
         return productRepository.save(product);
+    }
+
+    private void requireActiveCategory(Product product) {
+        if (!categoryRepository.existsById(product.getCategory().getId())) {
+            throw new ResourceNotFoundException("Category not found");
+        }
     }
 
     /**

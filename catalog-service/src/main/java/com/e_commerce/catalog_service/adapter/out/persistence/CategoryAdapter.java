@@ -1,5 +1,6 @@
 package com.e_commerce.catalog_service.adapter.out.persistence;
 
+import com.e_commerce.catalog_service.domain.exception.ResourceNotFoundException;
 import com.e_commerce.catalog_service.adapter.out.persistence.entity.CategoryJpaEntity;
 import com.e_commerce.catalog_service.adapter.out.persistence.mapper.CategoryMapper;
 import com.e_commerce.catalog_service.adapter.out.persistence.repository.CategoryJpaRepository;
@@ -86,13 +87,14 @@ public class CategoryAdapter implements CategoryRepository {
     @Override
     public void deactivate(UUID id) {
         CategoryJpaEntity entity = categoryJpaRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Category not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Category not found"));
 
         entity.setActive(false);
     }
 
     @Override
     public boolean existsById(UUID id) {
-        return categoryJpaRepository.existsById(id);
+        // Igual que findById: una categoría inactiva cuenta como inexistente
+        return categoryJpaRepository.existsByIdAndActiveTrue(id);
     }
 }

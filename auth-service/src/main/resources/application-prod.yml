@@ -1,0 +1,28 @@
+# Perfil de producción (Render): SPRING_PROFILES_ACTIVE=prod.
+# Sin valores por defecto para los secretos: si falta una variable, el servicio no arranca.
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+  jpa:
+    show-sql: false
+    hibernate:
+      ddl-auto: validate
+
+security:
+  jwt:
+    secret: ${JWT_SECRET}
+    expiration: ${JWT_EXPIRATION:86400000}
+
+admin:
+  email: ${ADMIN_EMAIL}
+  fullname: ${ADMIN_FULLNAME:Administrador}
+  password: ${ADMIN_PASSWORD}
+
+cors:
+  allowed-origins: ${CORS_ALLOWED_ORIGINS}
+
+logging:
+  level:
+    root: INFO

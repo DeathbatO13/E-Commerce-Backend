@@ -1,22 +1,19 @@
-server:
-  port: 8081
-
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/auth_db
-    username: postgres
-    password: postgres
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/auth_db}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:postgres}
   jpa:
     open-in-view: false
     show-sql: true
     hibernate:
-      ddl-auto: update
-  flyway:
-    enabled: false
+      # El esquema lo crea Flyway (db/migration); Hibernate solo verifica que coincida
+      ddl-auto: validate
 
+# SUPER_ADMIN inicial (SuperAdminInitializer). En prod no hay valores por defecto.
 admin:
-  email: administrator@admin.com
-  fullname: Administrador
-  password: Admin1234
+  email: ${ADMIN_EMAIL:administrator@admin.com}
+  fullname: ${ADMIN_FULLNAME:Administrador}
+  password: ${ADMIN_PASSWORD:Admin1234}
 
 

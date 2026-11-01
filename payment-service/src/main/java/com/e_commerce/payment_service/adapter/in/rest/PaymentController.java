@@ -22,11 +22,12 @@ public class PaymentController {
     @PostMapping("/process")
     public ResponseEntity<PaymentResponse> processPayment(
             @RequestBody @Valid ProcessPaymentRequest request,
-            @RequestHeader(value = "Authorization", required = false) String token) {
+            @RequestHeader("Authorization") String token) {
 
         Payment payment = processPaymentUseCase.processPayment(
                 request.orderId(),
                 request.amount(),
+                request.simulateResult(),
                 token
         );
 

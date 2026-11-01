@@ -1,5 +1,6 @@
 package com.e_commerce.catalog_service.application.service;
 
+import com.e_commerce.catalog_service.domain.port.out.ProductRepository;
 import com.e_commerce.catalog_service.domain.exception.ResourceNotFoundException;
 import com.e_commerce.catalog_service.domain.model.Category;
 import com.e_commerce.catalog_service.domain.port.in.*;
@@ -24,9 +25,12 @@ public class CategoryApplicationService implements CreateCategoryUseCase,
         ConfirmCategoryExistsUseCase {
 
     private final CategoryRepository categoryRepository;
+    private final ProductRepository productRepository;
 
-    public CategoryApplicationService(CategoryRepository categoryRepository) {
+    public CategoryApplicationService(CategoryRepository categoryRepository,
+                                      ProductRepository productRepository) {
         this.categoryRepository = categoryRepository;
+        this.productRepository = productRepository;
     }
 
     /**
@@ -52,6 +56,9 @@ public class CategoryApplicationService implements CreateCategoryUseCase,
      */
     @Override
     public void deleteById(UUID categoryId) {
+        if (productRepository.existsByCategory(categoryId)) {
+            throw new IllegalStateException("Category has active products");
+        }
         categoryRepository.deactivate(categoryId);
     }
 

@@ -1,5 +1,7 @@
 package com.e_commerce.catalog_service.adapter.in.rest;
 
+import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
 import com.e_commerce.catalog_service.adapter.in.rest.dto.request.CreateCategoryRequest;
 import com.e_commerce.catalog_service.adapter.in.rest.dto.request.UpdateCategoryRequest;
 import com.e_commerce.catalog_service.adapter.in.rest.dto.response.CategoryResponse;
@@ -47,7 +49,8 @@ public class CategoryController {
      * @return respuesta con los datos de la categoría creada
      */
     @PostMapping
-    public CategoryResponse create(@RequestBody CreateCategoryRequest request) {
+    @ResponseStatus(HttpStatus.CREATED)
+    public CategoryResponse create(@Valid @RequestBody CreateCategoryRequest request) {
         var category = createCategoryUseCase.create(request.name());
         return new CategoryResponse(
                 category.getId(),
@@ -83,7 +86,7 @@ public class CategoryController {
     @PutMapping("/{id}")
     public CategoryResponse update(
             @PathVariable UUID id,
-            @RequestBody UpdateCategoryRequest request
+            @Valid @RequestBody UpdateCategoryRequest request
     ) {
         var category = updateCategoryUseCase.update(id, request.name());
         return new CategoryResponse(
@@ -99,6 +102,7 @@ public class CategoryController {
      * @param id identificador de la categoría a eliminar
      */
     @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable UUID id) {
         deleteCategoryUseCase.deleteById(id);
     }

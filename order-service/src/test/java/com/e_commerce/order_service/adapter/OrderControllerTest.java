@@ -66,7 +66,7 @@ public class OrderControllerTest {
     private ObjectMapper objectMapper;
 
     @Test
-    @WithMockUser(username = "123e4567-e89b-12d3-a456-426614174000")
+    @WithMockUser(username = "123e4567-e89b-12d3-a456-426614174000", roles = "CLIENT")
     void createOrder_shouldReturn201() throws Exception {
 
         UUID orderId = UUID.randomUUID();
@@ -206,6 +206,28 @@ public class OrderControllerTest {
                 .andExpect(jsonPath("$.status").value(400));
 
         verify(createOrderUseCase, never()).createOrder(any(), any(), any());
+    }
+
+    @Test
+    @WithMockUser(username = CLIENT_ID, roles = "SUPER_ADMIN")
+    void getOrders_asSuperAdmin_shouldListAllOrders() throws Exception {
+        when(getOrdersUseCase.getAllOrders()).thenReturn(List.of());
+
+        mockMvc.perform(get("/orders"))
+                .andExpect(status().isOk());
+
+        verify(getOrdersUseCase).getAllOrders();
+    }
+
+    @Test
+    @WithMockUser(username = CLIENT_ID, roles = "SERVICE")
+    void getOrders_withoutBusinessRole_shouldReturn403() throws Exception {
+        // ROLE_SERVICE (token interno) solo sirve para /orders/{id}/pay
+        mockMvc.perform(get("/orders"))
+                .andExpect(status().isForbidden());
+
+        verify(getOrdersUseCase, never()).getAllOrders();
+        verify(getOrdersUseCase, never()).getOrderByUser(any());
     }
 
 }

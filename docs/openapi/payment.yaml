@@ -1,8 +1,14 @@
 openapi: 3.0.3
 info:
   title: Payment Service API (Mock)
-  description: Servicio de pagos simulado para el MVP.
-  version: 1.0.0
+  description: |
+    Servicio de pagos simulado para el MVP.
+
+    Antes de registrar el pago, payment-service consulta el pedido en order-service
+    con el token del usuario: el pedido debe pertenecerle, estar en estado CREATED
+    y `amount` debe coincidir con su total. Si el pago se aprueba, payment-service
+    marca el pedido como PAID (POST /orders/{id}/pay con el token interno de servicio).
+  version: 1.1.0
 
 servers:
   - url: http://localhost:8085
@@ -27,11 +33,41 @@ paths:
               $ref: '#/components/schemas/PaymentRequest'
       responses:
         '200':
-          description: Pago procesado
+          description: Pago procesado (APPROVED o REJECTED; ambos quedan registrados)
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/PaymentResponse'
+        '400':
+          description: Request inválido, `simulateResult` desconocido o `amount` distinto del total del pedido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Falta el token o es inválido
+        '403':
+          description: El pedido pertenece a otro usuario
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: El pedido no existe
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: El pedido no está pendiente de pago (ya PAID o CANCELLED)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '502':
+          description: order-service respondió con un error inesperado
+        '503':
+          description: order-service no está disponible
 
 components:
   securitySchemes:
@@ -47,16 +83,46 @@ components:
       properties:
         orderId:
           type: string
+          format: uuid
         amount:
           type: number
+          minimum: 0
+          exclusiveMinimum: true
+          description: Debe coincidir con el total del pedido
+        simulateResult:
+          type: string
+          enum: [APPROVED, REJECTED]
+          description: Resultado forzado de la pasarela simulada. Si se omite, el pago se aprueba.
 
     PaymentResponse:
       type: object
       properties:
+        id:
+          type: string
+          format: uuid
         orderId:
           type: string
+          format: uuid
+        amount:
+          type: number
         status:
           type: string
           enum: [APPROVED, REJECTED]
         transactionId:
           type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    ErrorResponse:
+      type: object
+      properties:
+        status:
+          type: integer
+        error:
+          type: string
+        message:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
