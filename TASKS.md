@@ -29,11 +29,11 @@ Estos son los problemas concretos encontrados al revisar el código actual. No s
 >
 > | Servicio | Compila | Tests | Notas |
 > |---|---|---|---|
-> | auth-service | ✅ | ✅ 21/21 | `contextLoads` usa el perfil `test` (H2) |
-> | catalog-service | ✅ | ✅ 25/25 | `contextLoads` usa el perfil `test` (H2) |
-> | cart-service | ✅ | ✅ 17/17 | `contextLoads` y `@DataJpaTest` usan el perfil `test` (H2) |
-> | order-service | ✅ | ✅ 18/18 | `contextLoads` usa el perfil `test` (H2) |
-> | payment-service | ✅ | ✅ 11/11 | sin `contextLoads` (necesitaría `payment_db`) |
+> | auth-service | ✅ | ✅ 31/31 | `contextLoads` usa el perfil `test` (H2) |
+> | catalog-service | ✅ | ✅ 45/45 | `contextLoads` usa el perfil `test` (H2) |
+> | cart-service | ✅ | ✅ 42/42 | `contextLoads` y `@DataJpaTest` usan el perfil `test` (H2) |
+> | order-service | ✅ | ✅ 51/51 | `contextLoads` usa el perfil `test` (H2) |
+> | payment-service | ✅ | ✅ 19/19 | sin `contextLoads` (necesitaría `payment_db`) |
 >
 > ⚠️ **Corrección del diagnóstico del 25-oct:** se hizo sobre un `develop` local desactualizado (`1ad3395`). `origin/develop` ya tenía commiteado payment-service, la Fase 2 de order y el manejo de errores (`d62e8bf`, `de778d0`, `ef16919`). No se había "perdido" código: solo faltaba sincronizar con `git pull`. Varias tareas marcadas abajo como "recuperadas" ya existían en remoto.
 
@@ -66,8 +66,8 @@ Estos son los problemas concretos encontrados al revisar el código actual. No s
 - [x] **Hexagonal violada en cart-service**: resuelto (28-oct), ver 1.2.
 - [x] **Hexagonal violada en catalog-service**: resuelto (01-nov), ver 1.4.
 - [x] **Versiones inconsistentes** (alineadas el 01-nov, ver 3.2): Spring Boot 3.5.9 / 3.5.10 / 3.5.11 según el servicio. springdoc 2.3.0 y 2.5.0 no son compatibles con Boot 3.5 (necesita 2.8.x), y cart y order ni siquiera lo incluyen. ~~order-service mezclaba `jjwt-impl 0.12.6` con `jjwt-api 0.11.5`~~ (alineado el 01-nov).
-- [ ] **Repos git anidados**: cada servicio tiene un `.git` vacío (rama `master` sin commits) que dejó Spring Initializr. Confunde al IDE y a git.
-- [ ] **`.gitignore` raíz**: incluye `TASKS.md`, pero el archivo ya está trackeado (la regla no tiene efecto). También lista `README-TAREAS.md`, que no existe.
+- [ ] **Repos git anidados** (verificados vacíos el 02-nov: 0 objetos y 0 refs; falta borrarlos a mano, ver 3.5): cada servicio tiene un `.git` vacío (rama `master` sin commits) que dejó Spring Initializr. Confunde al IDE y a git.
+- [x] **`.gitignore` raíz** (resuelto el 02-nov, ver 3.5): incluye `TASKS.md`, pero el archivo ya está trackeado (la regla no tiene efecto). También lista `README-TAREAS.md`, que no existe.
 
 ---
 
@@ -195,7 +195,7 @@ Esta es la fase más importante para entender **cómo se comunican los microserv
   - En cart, order y payment: error HTTP de un servicio downstream (`RestClientResponseException`) → `502`; servicio caído o timeout (`ResourceAccessException`) → `503`. Los adaptadores traducen antes los casos esperados: catalog 404 → `ResourceNotFoundException`; en payment, order 404/409 → 404/409.
   - Cualquier otra → `500` con mensaje genérico, y ahora se **loguea** el stacktrace (antes se perdía).
   - `OrderController` ya no arma 403/404 vacíos a mano: lanza las excepciones y el handler responde con cuerpo.
-- [ ] Pendientes de errores: `OrderService` responde 400 cuando el carrito está vacío (sería más claro 409 o 422); si cart-service rechaza el token al crear un pedido, order responde 502 en vez de propagar el 401.
+- [ ] Pendientes de errores: `OrderService` responde 400 cuando el carrito está vacío (sería más claro 409 o 422); ~~si cart-service rechaza el token al crear un pedido, order responde 502 en vez de propagar el 401~~ (resuelto el 02-nov: `CartHttpAdapter` traduce el 401 de cart a `BadCredentialsException` → 401, ver Fase 4).
   - *Por qué:* sin esto, Spring Boot devuelve una página de error genérica con stacktrace, lo cual es una mala práctica de API (expone detalles internos) y obliga al frontend a adivinar qué pasó.
 
 ### 3.2 Configuración y secretos
@@ -231,15 +231,15 @@ Esta es la fase más importante para entender **cómo se comunican los microserv
 
 ### 3.5 Higiene del repositorio
 
-- [ ] Borrar los `.git` anidados y vacíos de `auth-service/`, `cart-service/`, `catalog-service/` y `order-service/` (los dejó Spring Initializr; el repo real es el de la raíz).
-- [ ] Limpiar el `.gitignore` raíz: quitar `TASKS.md` (ya está trackeado) y `README-TAREAS.md` (no existe), y agregar `target/`, `.idea/` y `HELP.md` a nivel raíz.
-- [ ] Commitear temprano y seguido, en especial los servicios nuevos (lo que le pasó a payment-service).
+- [ ] Borrar los `.git` anidados y vacíos de `auth-service/`, `cart-service/`, `catalog-service/` y `order-service/` (los dejó Spring Initializr; el repo real es el de la raíz). Verificado el 02-nov: no tienen objetos, refs ni commits, así que borrarlos no pierde nada. Como están fuera del índice, no aparecen en `git status`: es un paso local, no entra en ningún commit.
+- [x] Limpiar el `.gitignore` raíz (02-nov): se quitaron `TASKS.md` y `README-TAREAS.md`, y se agregaron `target/`, `HELP.md`, `.idea/` y `*.iml` / `*.iws` / `*.ipr`, más `.env` (para el `docker-compose` de la Fase 5) y `*.log`. `.vscode/settings.json` sigue trackeado a propósito (es una configuración compartida del proyecto).
+- [ ] *(hábito, no tarea)* Commitear temprano y seguido, en especial los servicios nuevos (lo que le pasó a payment-service).
 
 ---
 
 ## Fase 4 — Testing
 
-Con ~25 tests en todo el repo, casi todos "happy path" sobre controllers, falta cobertura real en varias capas. Desde el 28-oct pasan todos los tests existentes de los 5 servicios (ver la tabla de la Fase 0).
+Con ~25 tests en todo el repo (188 desde el 02-nov), casi todos "happy path" sobre controllers, falta cobertura real en varias capas. Desde el 28-oct pasan todos los tests existentes de los 5 servicios (ver la tabla de la Fase 0).
 
 - [x] **Hacer pasar los tests existentes primero** (28-oct):
   - Los `@WebMvcTest` de catalog y cart importan su `SecurityConfig` real y mockean `JwtProvider`, así que también prueban las reglas de acceso (se agregaron casos 403 para CLIENT y sin autenticación). Se agregó `spring-security-test` a catalog.
@@ -247,12 +247,41 @@ Con ~25 tests en todo el repo, casi todos "happy path" sobre controllers, falta 
   - `CatalogServiceApplicationTests` usa `@ActiveProfiles("test")` (H2).
 - [x] **`contextLoads` de cart sin Postgres**: H2 en scope test y `@ActiveProfiles("test")`. (Order y auth todavía dependen de Postgres local.)
 
-- [ ] **Tests de dominio puro** (clases `Order`, `Cart`, `User`, `Product`, sin Spring): probar transiciones de estado inválidas (pagar un pedido cancelado, agregar cantidad negativa, etc.) y las invariantes del constructor.
-- [ ] **Tests de casos de uso** con los puertos de salida mockeados (Mockito). `CartApplicationServiceTest` ya existe (28-oct); `PaymentApplicationServiceTest` también (01-nov); faltan los de catalog (parcial) y auth.
-- [ ] **Tests de seguridad**: para cada servicio, verificar 401 sin token, 403 con rol insuficiente, y que un CLIENT no pueda llegar a endpoints de ADMIN.
-- [ ] **Tests de integración entre servicios**: simular las respuestas de catalog-service/cart-service/order-service con WireMock o `MockWebServer`, para probar el flujo completo sin levantar los 5 servicios reales.
-- [ ] **Tests de persistencia** (`@DataJpaTest`) para los mappers JPA↔dominio, al menos en catalog-service y order-service.
-- [ ] Agregar el plugin **JaCoCo** (`jacoco-maven-plugin`) en cada `pom.xml` para medir cobertura, y definir un umbral mínimo razonable (ej. 70% en `domain`/`application`).
+- [x] **Tests de dominio puro** (02-nov), sin Spring, en `src/test/.../domain/`:
+  - cart: `CartTest` (total, fusión del mismo producto, cantidad 0 o negativa, `updateQuantity` a 0 quita el item, producto inexistente, `clear`, lista de items de solo lectura) y `CartItemTest`.
+  - catalog: `ProductTest`. `Product` no validaba nada: ahora su constructor rechaza nombre vacío, precio nulo o ≤ 0, stock nulo o negativo y categoría nula (las mismas reglas que ya tenían los DTOs con `@Valid`).
+  - order: `OrderTest` (CREATED → PAID / CANCELLED; no se puede pagar dos veces, pagar un cancelado ni cancelar un pagado; items inmutables; datos obligatorios) y `OrderItemTest`.
+  - payment: `PaymentTest` (monto nulo, 0 o negativo; datos obligatorios).
+  - auth: `User` ya lo cubría `UserTest`.
+  - `CartItem` y `OrderItem` ahora rechazan un precio nulo o negativo.
+  - Si en las bases `dev` hay productos con precio 0, al leerlos se lanza `IllegalArgumentException` (400). Con las bases recreadas en 3.4 no debería haber ninguno.
+- [x] **Tests de casos de uso** con los puertos de salida mockeados (Mockito), completados el 02-nov:
+  - auth (`RegisterTest`): password hasheada y rol CLIENT al registrar, email duplicado sin guardar, login con email desconocido o password incorrecta sin generar token, cambio de rol de usuario inexistente o a un rol inválido.
+  - catalog: crear con categoría inexistente, actualizar un producto existente, `getById` inexistente y renombrar o actualizar una categoría inexistente.
+  - cart: `getCart` sin carrito no guarda, `removeProduct`, `clearCart` y operaciones sobre un carrito inexistente.
+  - order: el total sale de los precios de catalog (no del carrito); si catalog falla no se guarda el pedido ni se vacía el carrito; `payOrder` y `cancelOrder` con sus transiciones válidas e inválidas, y con pedidos inexistentes.
+  - payment: ya cubierto por `PaymentApplicationServiceTest` (01-nov).
+- [x] **Tests de seguridad** (02-nov): 401 sin token, 403 con rol insuficiente y que un CLIENT no llegue a endpoints de ADMIN.
+  - **Bug encontrado**: ningún `SecurityConfig` definía un `authenticationEntryPoint`, así que una petición sin token (o con token inválido) recibía **403** en vez de **401**. El frontend no podía distinguir "no logueado" de "sin permiso". Ahora los 5 usan `HttpStatusEntryPoint(UNAUTHORIZED)`. Tres tests que esperaban 403 para peticiones anónimas pasaron a esperar 401. El 401 sale sin cuerpo; si el frontend necesita el mismo `ErrorResponse` que el resto, hace falta un entry point propio.
+  - Los tests nuevos usan el `JwtAuthFilter` real con un `JwtProvider` mockeado (helper `givenToken`), así que prueban también que el claim `roles` se traduce a `ROLE_*`. Hasta ahora casi todos usaban `@WithMockUser`, que se saltea el filtro.
+  - auth: sin token / token inválido → 401, token CLIENT en `/admin/users` → 403, token ADMIN → 200.
+  - cart: token inválido → 401, token CLIENT → su carrito, token SUPER_ADMIN en `/cart` → 403.
+  - catalog: `POST /products` sin token → 401, token CLIENT no crea ni borra productos (403), `GET /products` con token vencido sigue siendo público.
+  - order: sin token / token inválido → 401, un CLIENT solo lista sus pedidos, un token de usuario (aunque sea ADMIN) no puede marcar pagado (403).
+  - payment: token inválido → 401.
+- [x] **Tests de integración entre servicios** (02-nov): los 4 adaptadores HTTP se prueban contra respuestas simuladas con `MockRestServiceServer` (viene en `spring-test`, así que no hace falta agregar WireMock). Se comprueba qué request arma cada adaptador (URL, método, headers) y cómo traduce cada status:
+  - cart → catalog (`CatalogHttpAdapterTest`): precio de un producto activo; inactivo o 404 → `ResourceNotFoundException`; 500 → `RestClientResponseException` (502); caída → `ResourceAccessException` (503).
+  - order → catalog y order → cart (`CatalogHttpAdapterTest`, `CartHttpAdapterTest`): reenvía el token del usuario, mapea los items, un carrito sin items queda vacío, `DELETE /cart` al vaciar, y **401 de cart → 401** (antes llegaba como 502; se corrigió `CartHttpAdapter`).
+  - payment → order (`OrderHttpAdapterTest`): `GET /orders/{id}` con el token del usuario (404 / 403), `POST /pay` con `X-Internal-Token` y **sin** el token del usuario (404 / 409).
+  - Lo que no cubren: el flujo completo con los servicios reales levantados (eso queda para el `docker-compose` de la Fase 5).
+- [x] **Tests de persistencia** (`@DataJpaTest`, 02-nov), con `flush` + `clear` para que cada lectura vaya a la base:
+  - catalog (`CatalogPersistenceAdapterTest`): mapeo completo de producto con su categoría, guardar con categoría inexistente, borrado lógico de productos y categorías (desaparecen de `findById`, `findAll`, `findByName`, `findByCategory` y `existsByCategory`), búsqueda parcial sin distinguir mayúsculas y desactivar algo inexistente.
+  - order (`OrderPersistenceAdapterTest`): mapeo completo del pedido con sus items, cambio de estado sin duplicar items (`OrderMapper.toEntity` los rearma sin id en cada `save`), `findByUserId` y pedido inexistente.
+  - cart ya lo tenía (`CartPersistenceAdapterTest`).
+- [x] **JaCoCo** 0.8.13 en los 5 `pom.xml` (02-nov). `mvn test` genera `target/site/jacoco/index.html` y `mvn verify` falla si algún paquete `domain` o `application` baja del **80% de líneas**.
+  - Cobertura medida el 02-nov: `domain` 100% en los 5; `application` entre 84,6% (catalog) y 100%. Las capas `adapter` y `config` no tienen umbral; las más bajas están en payment (59% y 37%).
+  - En catalog, el `argLine` de surefire pisaba el agente de JaCoCo: se cambió a `@{argLine} -XX:+EnableDynamicAgentLoading`.
+  - El CI de la Fase 6 tiene que correr `mvn verify` (no solo `mvn test`) para que el umbral se aplique.
 
 ---
 

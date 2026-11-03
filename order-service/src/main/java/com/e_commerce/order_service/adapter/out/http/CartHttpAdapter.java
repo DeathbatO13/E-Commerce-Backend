@@ -1,6 +1,8 @@
 package com.e_commerce.order_service.adapter.out.http;
 
 import java.util.List;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.authentication.BadCredentialsException;
 import com.e_commerce.order_service.adapter.out.http.dto.CartDto;
 import com.e_commerce.order_service.domain.model.CartSnapshot;
 import com.e_commerce.order_service.domain.ports.out.CartPort;
@@ -27,6 +29,10 @@ public class CartHttpAdapter implements CartPort {
                 .uri("/cart")
                 .header("Authorization", token)
                 .retrieve()
+                // Si cart rechaza el token, el cliente recibe 401 (antes llegaba como 502)
+                .onStatus(status -> status.isSameCodeAs(HttpStatus.UNAUTHORIZED), (request, response) -> {
+                    throw new BadCredentialsException("cart-service rejected the token");
+                })
                 .body(CartDto.class);
 
         if (cart == null || cart.items() == null) {
@@ -43,6 +49,9 @@ public class CartHttpAdapter implements CartPort {
                 .uri("/cart")
                 .header("Authorization", token)
                 .retrieve()
+                .onStatus(status -> status.isSameCodeAs(HttpStatus.UNAUTHORIZED), (request, response) -> {
+                    throw new BadCredentialsException("cart-service rejected the token");
+                })
                 .toBodilessEntity();
     }
 }

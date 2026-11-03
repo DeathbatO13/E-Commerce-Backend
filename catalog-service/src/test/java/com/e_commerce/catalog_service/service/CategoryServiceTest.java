@@ -1,5 +1,6 @@
 package com.e_commerce.catalog_service.service;
 
+import com.e_commerce.catalog_service.domain.exception.ResourceNotFoundException;
 import static org.mockito.Mockito.never;
 import com.e_commerce.catalog_service.domain.port.out.ProductRepository;
 import com.e_commerce.catalog_service.application.service.CategoryApplicationService;
@@ -95,5 +96,27 @@ class CategoryServiceTest {
         assertThrows(IllegalStateException.class, () -> service.deleteById(id));
 
         verify(categoryRepository, never()).deactivate(id);
+    }
+
+    @Test
+    void shouldRenameExistingCategory() {
+        UUID id = UUID.randomUUID();
+        Category category = new Category(id, "Old", true);
+        when(categoryRepository.findById(id)).thenReturn(Optional.of(category));
+        when(categoryRepository.save(category)).thenReturn(category);
+
+        Category updated = service.update(id, "New");
+
+        assertEquals("New", updated.getName());
+        verify(categoryRepository).save(category);
+    }
+
+    @Test
+    void updateShouldFailWhenCategoryDoesNotExist() {
+        UUID id = UUID.randomUUID();
+        when(categoryRepository.findById(id)).thenReturn(Optional.empty());
+
+        assertThrows(ResourceNotFoundException.class, () -> service.update(id, "New"));
+        verify(categoryRepository, never()).save(any());
     }
 }

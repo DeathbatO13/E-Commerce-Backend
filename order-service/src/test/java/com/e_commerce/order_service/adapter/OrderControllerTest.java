@@ -1,5 +1,8 @@
 package com.e_commerce.order_service.adapter;
 
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import io.jsonwebtoken.Claims;
 import com.e_commerce.order_service.adapter.in.rest.OrderController;
 import com.e_commerce.order_service.config.InternalServiceAuthFilter;
 import com.e_commerce.order_service.config.JwtProvider;
@@ -126,7 +129,7 @@ public class OrderControllerTest {
     void payOrder_withWrongInternalToken_shouldBeRejected() throws Exception {
         mockMvc.perform(post("/orders/{id}/pay", UUID.randomUUID())
                         .header(InternalServiceAuthFilter.HEADER, "wrong-token"))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
 
         verify(payOrderUseCase, never()).payOrder(any());
     }
@@ -230,4 +233,48 @@ public class OrderControllerTest {
         verify(getOrdersUseCase, never()).getOrderByUser(any());
     }
 
+    @Test
+    void getOrders_withoutToken_returns401() throws Exception {
+        mockMvc.perform(get("/orders"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void getOrders_withInvalidToken_returns401() throws Exception {
+        when(jwtProvider.validateToken(anyString())).thenReturn(false);
+
+        mockMvc.perform(get("/orders").header("Authorization", "Bearer expired"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void getOrders_withClientToken_listsOnlyOwnOrders() throws Exception {
+        givenToken("client-token", CLIENT_ID, "CLIENT");
+
+        mockMvc.perform(get("/orders").header("Authorization", "Bearer client-token"))
+                .andExpect(status().isOk());
+
+        verify(getOrdersUseCase).getOrderByUser(UUID.fromString(CLIENT_ID));
+        verify(getOrdersUseCase, never()).getAllOrders();
+    }
+
+    @Test
+    void payOrder_withUserTokenInsteadOfInternalToken_returns403() throws Exception {
+        givenToken("admin-token", CLIENT_ID, "ADMIN");
+
+        mockMvc.perform(post("/orders/{id}/pay", UUID.randomUUID())
+                        .header("Authorization", "Bearer admin-token"))
+                .andExpect(status().isForbidden());
+
+        verify(payOrderUseCase, never()).payOrder(any());
+    }
+
+    /** Hace que {@code token} sea válido para el JwtAuthFilter real, con ese subject y esos roles. */
+    private void givenToken(String token, String subject, String... roles) {
+        Claims claims = mock(Claims.class);
+        when(claims.getSubject()).thenReturn(subject);
+        when(claims.get("roles", List.class)).thenReturn(List.of(roles));
+        when(jwtProvider.validateToken(token)).thenReturn(true);
+        when(jwtProvider.getClaims(token)).thenReturn(claims);
+    }
 }

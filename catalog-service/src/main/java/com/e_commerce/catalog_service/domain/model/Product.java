@@ -1,6 +1,7 @@
 package com.e_commerce.catalog_service.domain.model;
 
 import java.math.BigDecimal;
+import java.util.Objects;
 import java.util.UUID;
 
 /**
@@ -22,12 +23,21 @@ public class Product {
     private boolean active;
 
     public Product(UUID id, String name, String description, BigDecimal price, Integer stock, Category category, boolean active) {
-        this.id = id;
+        if (name == null || name.isBlank()) {
+            throw new IllegalArgumentException("Product name is required");
+        }
+        if (price == null || price.signum() <= 0) {
+            throw new IllegalArgumentException("Product price must be greater than zero");
+        }
+        if (stock == null || stock < 0) {
+            throw new IllegalArgumentException("Product stock cannot be negative");
+        }
+        this.id = Objects.requireNonNull(id);
         this.name = name;
         this.description = description;
         this.price = price;
         this.stock = stock;
-        this.category = category;
+        this.category = Objects.requireNonNull(category, "Product category is required");
         this.active = active;
     }
 

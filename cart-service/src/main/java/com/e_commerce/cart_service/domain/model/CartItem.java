@@ -14,6 +14,8 @@ public class CartItem {
 
         if(quantity <= 0)
             throw new IllegalArgumentException("Quantity must be greater than zero");
+        if (price == null || price.signum() < 0)
+            throw new IllegalArgumentException("Price cannot be null or negative");
 
         this.id = id;
         this.productId = productId;

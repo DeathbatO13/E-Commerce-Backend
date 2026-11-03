@@ -1,5 +1,8 @@
 package com.e_commerce.auth_service.userControllerTest;
 
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import io.jsonwebtoken.Claims;
 import com.e_commerce.auth_service.adapter.in.rest.UserController;
 import com.e_commerce.auth_service.config.JwtProvider;
 import com.e_commerce.auth_service.config.SecurityConfig;
@@ -99,5 +102,45 @@ class UserControllerTest {
         mockMvc.perform(post("/admin/users/{id}/role", superAdminId).param("role", "CLIENT"))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.message").value("SUPER_ADMIN role cannot be changed"));
+    }
+
+    @Test
+    void sinTokenResponde401() throws Exception {
+        mockMvc.perform(get("/admin/users"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void tokenInvalidoResponde401() throws Exception {
+        when(jwtProvider.validateToken(anyString())).thenReturn(false);
+
+        mockMvc.perform(get("/admin/users").header("Authorization", "Bearer expirado"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void tokenDeClienteNoLlegaAEndpointsDeAdmin() throws Exception {
+        givenToken("client-token", UUID.randomUUID().toString(), "CLIENT");
+
+        mockMvc.perform(get("/admin/users").header("Authorization", "Bearer client-token"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void tokenDeAdminPuedeListarUsuarios() throws Exception {
+        givenToken("admin-token", UUID.randomUUID().toString(), "ADMIN");
+        when(listUsersUseCase.listUsers()).thenReturn(List.of());
+
+        mockMvc.perform(get("/admin/users").header("Authorization", "Bearer admin-token"))
+                .andExpect(status().isOk());
+    }
+
+    /** Hace que {@code token} sea válido para el JwtAuthFilter real, con ese subject y esos roles. */
+    private void givenToken(String token, String subject, String... roles) {
+        Claims claims = mock(Claims.class);
+        when(claims.getSubject()).thenReturn(subject);
+        when(claims.get("roles", List.class)).thenReturn(List.of(roles));
+        when(jwtProvider.validateToken(token)).thenReturn(true);
+        when(jwtProvider.getClaims(token)).thenReturn(claims);
     }
 }
