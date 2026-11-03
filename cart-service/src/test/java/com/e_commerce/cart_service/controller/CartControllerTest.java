@@ -1,5 +1,9 @@
 package com.e_commerce.cart_service.controller;
 
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import java.util.List;
+import io.jsonwebtoken.Claims;
 import com.e_commerce.cart_service.adapter.in.rest.CartController;
 import com.e_commerce.cart_service.config.JwtProvider;
 import com.e_commerce.cart_service.config.SecurityConfig;
@@ -163,9 +167,50 @@ public class CartControllerTest {
     void shouldRejectRequestWithoutAuthentication() throws Exception {
 
         mockMvc.perform(get("/cart"))
+                .andExpect(status().isUnauthorized());
+
+        verify(getCartUseCase, never()).getCart(any());
+    }
+
+    @Test
+    void invalidToken_returns401() throws Exception {
+        when(jwtProvider.validateToken(anyString())).thenReturn(false);
+
+        mockMvc.perform(get("/cart").header("Authorization", "Bearer expired"))
+                .andExpect(status().isUnauthorized());
+
+        verify(getCartUseCase, never()).getCart(any());
+    }
+
+    @Test
+    void clientToken_reachesOwnCart() throws Exception {
+        UUID userId = UUID.randomUUID();
+        givenToken("client-token", userId.toString(), "CLIENT");
+        when(getCartUseCase.getCart(userId)).thenReturn(new Cart(userId));
+
+        mockMvc.perform(get("/cart").header("Authorization", "Bearer client-token"))
+                .andExpect(status().isOk());
+
+        verify(getCartUseCase).getCart(userId);
+    }
+
+    @Test
+    void tokenWithoutCartRole_returns403() throws Exception {
+        // /cart/** es para CLIENT y ADMIN; SUPER_ADMIN solo tiene /cart/admin/**
+        givenToken("super-token", UUID.randomUUID().toString(), "SUPER_ADMIN");
+
+        mockMvc.perform(get("/cart").header("Authorization", "Bearer super-token"))
                 .andExpect(status().isForbidden());
 
         verify(getCartUseCase, never()).getCart(any());
     }
 
+    /** Hace que {@code token} sea válido para el JwtAuthFilter real, con ese subject y esos roles. */
+    private void givenToken(String token, String subject, String... roles) {
+        Claims claims = mock(Claims.class);
+        when(claims.getSubject()).thenReturn(subject);
+        when(claims.get("roles", List.class)).thenReturn(List.of(roles));
+        when(jwtProvider.validateToken(token)).thenReturn(true);
+        when(jwtProvider.getClaims(token)).thenReturn(claims);
+    }
 }

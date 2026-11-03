@@ -104,4 +104,37 @@ class ProductServiceTest {
 
         verify(productRepository, never()).save(any());
     }
+
+    @Test
+    void createShouldRejectMissingCategory() {
+        Product product = new Product(UUID.randomUUID(), "TV", "LCD", BigDecimal.TEN, 1,
+                new Category(UUID.randomUUID(), null, true), true);
+        when(categoryRepository.existsById(product.getCategory().getId())).thenReturn(false);
+
+        assertThrows(ResourceNotFoundException.class, () -> service.create(product));
+
+        verify(productRepository, never()).save(any());
+    }
+
+    @Test
+    void updateShouldSaveExistingProduct() {
+        Product product = new Product(UUID.randomUUID(), "TV", "LCD", BigDecimal.TEN, 1,
+                new Category(UUID.randomUUID(), "Electronics", true), false);
+        when(productRepository.existsById(product.getId())).thenReturn(true);
+        when(categoryRepository.existsById(product.getCategory().getId())).thenReturn(true);
+        when(productRepository.save(product)).thenReturn(product);
+
+        Product updated = service.update(product);
+
+        assertSame(product, updated);
+        verify(productRepository).save(product);
+    }
+
+    @Test
+    void getByIdShouldFailWhenProductDoesNotExist() {
+        UUID id = UUID.randomUUID();
+        when(productRepository.findById(id)).thenReturn(Optional.empty());
+
+        assertThrows(ResourceNotFoundException.class, () -> service.getById(id));
+    }
 }

@@ -1,5 +1,9 @@
 package com.e_commerce.catalog_service.adapter.in;
 
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import io.jsonwebtoken.Claims;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import com.e_commerce.catalog_service.adapter.in.rest.ProductController;
@@ -241,5 +245,50 @@ class ProductControllerTest {
                 .andExpect(status().isNoContent());
 
         verify(deleteProductUseCase).deleteById(productId);
+    }
+
+    @Test
+    void createWithoutToken_returns401() throws Exception {
+        mockMvc.perform(post("/products")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isUnauthorized());
+
+        verifyNoInteractions(createProductUseCase);
+    }
+
+    @Test
+    void clientToken_cannotCreateOrDeleteProducts() throws Exception {
+        givenToken("client-token", UUID.randomUUID().toString(), "CLIENT");
+
+        mockMvc.perform(post("/products")
+                        .header("Authorization", "Bearer client-token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(delete("/products/{id}", UUID.randomUUID())
+                        .header("Authorization", "Bearer client-token"))
+                .andExpect(status().isForbidden());
+
+        verifyNoInteractions(createProductUseCase, deleteProductUseCase);
+    }
+
+    @Test
+    void publicGet_ignoresInvalidToken() throws Exception {
+        // GET del catálogo es público: un token vencido no debe bloquear la navegación
+        when(jwtProvider.validateToken(anyString())).thenReturn(false);
+        when(listProductsUseCase.listAll()).thenReturn(List.of());
+
+        mockMvc.perform(get("/products").header("Authorization", "Bearer expired"))
+                .andExpect(status().isOk());
+    }
+
+    /** Hace que {@code token} sea válido para el JwtAuthFilter real, con ese subject y esos roles. */
+    private void givenToken(String token, String subject, String... roles) {
+        Claims claims = mock(Claims.class);
+        when(claims.getSubject()).thenReturn(subject);
+        when(claims.get("roles", List.class)).thenReturn(List.of(roles));
+        when(jwtProvider.validateToken(token)).thenReturn(true);
+        when(jwtProvider.getClaims(token)).thenReturn(claims);
     }
 }

@@ -1,6 +1,8 @@
 package com.e_commerce.auth_service.loginAndRegisterTest;
 
 
+import org.mockito.ArgumentCaptor;
+import com.e_commerce.auth_service.domain.exception.ResourceNotFoundException;
 import static org.mockito.Mockito.never;
 import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -156,5 +158,67 @@ public class RegisterTest {
 
         assertEquals(Set.of(Role.ADMIN), client.getRoles());
         verify(userRepository).save(client);
+    }
+
+    @Test
+    void registroGuardaPasswordHasheadaYRolCliente() {
+        when(passwordEncoder.encode("password")).thenReturn("hashed-password");
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        authService.register("nuevo@mail.com", "password", "Nuevo");
+
+        ArgumentCaptor<User> saved = ArgumentCaptor.forClass(User.class);
+        verify(userRepository).save(saved.capture());
+        assertEquals("hashed-password", saved.getValue().getPassword());
+        assertEquals(Set.of(Role.CLIENT), saved.getValue().getRoles());
+    }
+
+    @Test
+    void registroConEmailExistenteDebeFallarSinGuardar() {
+        when(userRepository.existByEmail("repetido@mail.com")).thenReturn(true);
+
+        assertThrows(IllegalStateException.class,
+                () -> authService.register("repetido@mail.com", "password", "Repetido"));
+        verify(userRepository, never()).save(any());
+        verify(passwordEncoder, never()).encode(any());
+    }
+
+    @Test
+    void loginConEmailDesconocidoDebeFallar() {
+        when(userRepository.findByEmail("nadie@mail.com")).thenReturn(Optional.empty());
+
+        assertThrows(BadCredentialsException.class, () -> authService.login("nadie@mail.com", "password"));
+        verify(tokenGenerator, never()).generateToken(any());
+    }
+
+    @Test
+    void loginConPasswordIncorrectaDebeFallar() {
+        User user = new User(UUID.randomUUID(), "test@mail.com", "hashed", "Test",
+                Set.of(Role.CLIENT), true);
+        when(userRepository.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("wrong", "hashed")).thenReturn(false);
+
+        assertThrows(BadCredentialsException.class, () -> authService.login(user.getEmail(), "wrong"));
+        verify(tokenGenerator, never()).generateToken(any());
+    }
+
+    @Test
+    void cambiarRolDeUsuarioInexistenteDebeFallar() {
+        UUID id = UUID.randomUUID();
+        when(userRepository.findById(id)).thenReturn(Optional.empty());
+
+        assertThrows(ResourceNotFoundException.class, () -> authService.changeUserRole(id, "ADMIN"));
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void cambiarARolInexistenteDebeFallarSinGuardar() {
+        User client = new User(UUID.randomUUID(), "c@mail.com", "hashed", "Cliente",
+                Set.of(Role.CLIENT), true);
+        when(userRepository.findById(client.getId())).thenReturn(Optional.of(client));
+
+        assertThrows(IllegalArgumentException.class, () -> authService.changeUserRole(client.getId(), "ROOT"));
+        assertEquals(Set.of(Role.CLIENT), client.getRoles());
+        verify(userRepository, never()).save(any());
     }
 }

@@ -1,5 +1,6 @@
 package com.e_commerce.payment_service.adapter;
 
+import static org.mockito.ArgumentMatchers.anyString;
 import com.e_commerce.payment_service.adapter.in.rest.PaymentController;
 import com.e_commerce.payment_service.config.JwtProvider;
 import com.e_commerce.payment_service.config.SecurityConfig;
@@ -124,7 +125,20 @@ class PaymentControllerTest {
         mockMvc.perform(post("/payments/process")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body(UUID.randomUUID(), "150.00", null)))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
+
+        verify(processPaymentUseCase, never()).processPayment(any(), any(), any(), any());
+    }
+
+    @Test
+    void invalidToken_isRejectedWith401() throws Exception {
+        when(jwtProvider.validateToken(anyString())).thenReturn(false);
+
+        mockMvc.perform(post("/payments/process")
+                        .header("Authorization", "Bearer expired")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body(UUID.randomUUID(), "150.00", null)))
+                .andExpect(status().isUnauthorized());
 
         verify(processPaymentUseCase, never()).processPayment(any(), any(), any(), any());
     }

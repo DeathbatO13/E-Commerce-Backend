@@ -1,2 +1,15 @@
-TASKS.md
-README-TAREAS.md
+# Cada servicio tiene además su propio .gitignore (el de Spring Initializr)
+
+### Maven ###
+target/
+HELP.md
+
+### IDEs ###
+.idea/
+*.iml
+*.iws
+*.ipr
+
+### Entorno local ###
+.env
+*.log

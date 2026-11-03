@@ -1,5 +1,6 @@
 package com.e_commerce.cart_service.service;
 
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.e_commerce.cart_service.application.service.CartApplicationService;
 import com.e_commerce.cart_service.domain.exception.ResourceNotFoundException;
 import com.e_commerce.cart_service.domain.model.Cart;
@@ -90,5 +91,51 @@ class CartApplicationServiceTest {
         assertEquals(4, cart.getItems().get(0).getQuantity());
         assertEquals(0, BigDecimal.valueOf(40).compareTo(cart.getTotalPrice()));
         verify(cartRepository).save(existing);
+    }
+
+    @Test
+    void getCart_withoutSavedCart_returnsEmptyCartWithoutSaving() {
+        when(cartRepository.findByUserId(userId)).thenReturn(Optional.empty());
+
+        Cart cart = service.getCart(userId);
+
+        assertEquals(userId, cart.getUserId());
+        assertTrue(cart.getItems().isEmpty());
+        verify(cartRepository, never()).save(any());
+    }
+
+    @Test
+    void removeProduct_savesCartWithoutTheItem() {
+        Cart existing = new Cart(userId);
+        existing.addProduct(productId, BigDecimal.TEN, 2);
+        when(cartRepository.findByUserId(userId)).thenReturn(Optional.of(existing));
+
+        service.removeProduct(userId, productId);
+
+        assertTrue(existing.getItems().isEmpty());
+        verify(cartRepository).save(existing);
+    }
+
+    @Test
+    void clearCart_emptiesAndSavesCart() {
+        Cart existing = new Cart(userId);
+        existing.addProduct(productId, BigDecimal.TEN, 2);
+        when(cartRepository.findByUserId(userId)).thenReturn(Optional.of(existing));
+
+        service.clearCart(userId);
+
+        assertTrue(existing.getItems().isEmpty());
+        assertEquals(0, BigDecimal.ZERO.compareTo(existing.getTotalPrice()));
+        verify(cartRepository).save(existing);
+    }
+
+    @Test
+    void operationsOnMissingCart_failWithoutSaving() {
+        when(cartRepository.findByUserId(userId)).thenReturn(Optional.empty());
+
+        assertThrows(ResourceNotFoundException.class, () -> service.updateQuantity(userId, productId, 1));
+        assertThrows(ResourceNotFoundException.class, () -> service.removeProduct(userId, productId));
+        assertThrows(ResourceNotFoundException.class, () -> service.clearCart(userId));
+        verify(cartRepository, never()).save(any());
     }
 }
