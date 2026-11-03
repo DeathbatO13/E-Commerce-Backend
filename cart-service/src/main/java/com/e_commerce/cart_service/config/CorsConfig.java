@@ -29,6 +29,8 @@ public class CorsConfig {
                 .toList());
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("Authorization", "Content-Type"));
+        // Sin esto el navegador no deja leer Location (p. ej. el id del pedido en POST /orders → 201)
+        configuration.setExposedHeaders(List.of("Location"));
         configuration.setAllowCredentials(true);
         configuration.setMaxAge(3600L);
 
