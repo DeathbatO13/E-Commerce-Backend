@@ -56,7 +56,7 @@ Estos son los problemas concretos encontrados al revisar el código actual. No s
 - [x] **Ruta duplicada `/admin/admin/...`** en `UserController` de auth-service, por sumar el path del método al del `@RequestMapping` de clase.
 - [x] **Listado de usuarios restringido solo a SUPER_ADMIN** (resuelto el 29-oct, ver 1.3), cuando la regla de negocio dice que ADMIN también debería poder listarlos. La restricción está en **dos lugares**: el `@PreAuthorize` de clase y `requestMatchers("/admin/**").hasRole("SUPER_ADMIN")` en `SecurityConfig`.
 - [x] **El manejo global de errores es incompleto**: resuelto (28-oct), ver 3.1.
-- [ ] **Sin Dockerfile** en cart-service, catalog-service y order-service (solo existe en auth-service, y no es multi-stage). Sin `docker-compose.yml` raíz. Sin `render.yaml`. Sin `.github/workflows`.
+- [ ] **Sin Dockerfile** (Dockerfiles y `docker-compose.yml` resueltos el 03-nov, ver Fase 5; faltan `render.yaml` y CI) en cart-service, catalog-service y order-service (solo existe en auth-service, y no es multi-stage). Sin `docker-compose.yml` raíz. Sin `render.yaml`. Sin `.github/workflows`.
 - [x] **Secrets hardcodeados** (resuelto el 01-nov, ver 3.2) (contraseñas de DB, JWT secret, password del super admin) directamente en los `application*.yml`, en vez de venir de variables de entorno — inviable para producción/Render.
 - [x] **CORS solo configurado en auth-service** (resuelto el 01-nov, ver 3.3) — el frontend no podrá llamar a los demás servicios desde el navegador.
 - [x] **Flyway roto donde existe** (resuelto el 01-nov, ver 3.4): en auth-service está deshabilitado y `V1__create_users_table.sql` no coincide con la entidad (falta `fullname`, y la tabla de roles `user_roles` no es la que genera JPA). En cart-service el archivo se llama `v1__...` en minúscula, así que Flyway lo ignora (el prefijo `V` distingue mayúsculas).
@@ -206,7 +206,7 @@ Esta es la fase más importante para entender **cómo se comunican los microserv
   - URLs entre servicios declaradas en los YAML: `CATALOG_SERVICE_URL` (cart, order), `CART_SERVICE_URL` (order), `ORDER_SERVICE_URL` (payment).
   - `application-prod.y(a)ml` en los 5: **sin valores por defecto** para datasource, `JWT_SECRET`, `INTERNAL_SERVICE_TOKEN` (order, payment), `ADMIN_EMAIL` / `ADMIN_PASSWORD` (auth) ni `CORS_ALLOWED_ORIGINS`. Si falta alguna, el servicio no arranca, en vez de arrancar con el valor de desarrollo. También apaga `show-sql`.
   - `ddl-auto: validate` en prod en los 5 (desde 3.4).
-  - **No verificado en ejecución**: los tests no cargan el perfil `prod`. Probarlo al armar el `docker-compose` (Fase 5).
+  - **Verificado en ejecución el 03-nov** con el `docker-compose` de la Fase 5: los 5 servicios arrancan con `prod`, Flyway crea los esquemas y el flujo completo funciona.
 - [ ] Usar **el mismo valor de `JWT_SECRET`** en los 5 servicios en producción (los 5 ya lo leen de la misma variable; falta cargarla en Render, Fase 7) (se define una vez como variable de entorno y se repite en cada servicio de Render). *Por qué:* auth-service firma el token con ese secreto; si otro servicio usa un secreto distinto para *verificar* la firma, el token siempre se rechaza aunque sea válido.
 - [x] Exponer `/actuator/health` en los 5 servicios (01-nov): `management.endpoints.web.exposure.include: health,info`, probes `liveness` / `readiness` activados y `/actuator/health/**` público en cada `SecurityConfig`. *Por qué:* es el endpoint que Render (y cualquier orquestador) usa para saber si tu servicio sigue vivo.
 - [x] Hacer que el puerto del servidor lea la variable `PORT` (01-nov): `server.port: ${PORT:808x}` en los 5; en catalog el puerto estaba solo en el perfil `dev`, se movió al YAML base.
@@ -287,9 +287,18 @@ Con ~25 tests en todo el repo (188 desde el 02-nov), casi todos "happy path" sob
 
 ## Fase 5 — Dockerización
 
-- [ ] Crear `Dockerfile` (build multi-stage: Maven compila el jar, y una imagen final liviana `eclipse-temurin:21-jre` solo lo ejecuta) para cart-service, catalog-service, order-service y payment-service. Ojo: `auth-service/docker/Dockerfile` **no** es multi-stage (copia un jar ya compilado) y usa JRE 21 mientras el `pom.xml` compila con Java 17. Convertirlo también y alinear la versión de Java (17 o 21, pero la misma en el pom y en la imagen).
-- [ ] Corregir `auth-service/docker-compose.yml` (o reemplazarlo por el compose raíz): la variable `JWT_SECRET` no la lee nadie, las credenciales de la base (`auth_user` / `auth_pass`) no coinciden con las del YAML (`postgres` / `postgres`), y el datasource apunta a `localhost`, que dentro del contenedor no es la base de datos.
-- [ ] Crear un `docker-compose.yml` en la **raíz del repo** que levante los 5 microservicios + sus bases Postgres, con la red y las variables de entorno necesarias para que se hablen entre sí localmente. *Por qué:* hoy solo existe un compose aislado dentro de auth-service; para probar el flujo completo (carrito → pedido → pago) necesitas todo el stack corriendo a la vez.
+- [x] `Dockerfile` multi-stage en los 5 servicios (03-nov), en la raíz de cada uno:
+  - Etapa de build con `maven:3.9.9-eclipse-temurin-17`: primero `dependency:go-offline` (capa cacheada mientras no cambie el `pom.xml`) y después `package -DskipTests` (los tests corren en CI).
+  - Imagen final con `eclipse-temurin:17-jre-jammy` (**Java 17**, igual que los poms; la de auth usaba JRE 21), usuario sin privilegios y `-XX:MaxRAMPercentage=75`. Pesan ~500 MB; una base alpine las achicaría.
+  - `.dockerignore` por servicio (`target/`, IDE, wrapper de Maven).
+  - Se borró `auth-service/docker/Dockerfile`, que copiaba un jar ya compilado.
+- [x] ~~Corregir `auth-service/docker-compose.yml`~~: se borró (03-nov) y lo reemplaza el compose raíz. Problemas que tenía: la variable `JWT_SECRET` no la lee nadie, las credenciales de la base (`auth_user` / `auth_pass`) no coinciden con las del YAML (`postgres` / `postgres`), y el datasource apunta a `localhost`, que dentro del contenedor no es la base de datos.
+- [x] `docker-compose.yml` en la raíz (03-nov): `cp .env.example .env` y `docker compose up --build`.
+  - Un solo Postgres 16 con una base por servicio (`docker/postgres/init-databases.sql`), en el puerto **5433** del host para no chocar con un Postgres local. Los servicios esperan a que esté sano (`pg_isready`).
+  - Los 5 servicios corren con el perfil **`prod`**, con los secretos en `.env` (ignorado por git; la plantilla es `.env.example`) y las URLs entre servicios por nombre de contenedor (`http://catalog-service:8082`, etc.). Puertos 8081-8085.
+  - **Probado el 03-nov**: los 5 en `UP` en ~20 s; flujo completo login SUPER_ADMIN → categoría → producto → registro y login de cliente → carrito → pedido (201, el carrito queda vacío) → pago con monto incorrecto (400) → pago (200, `APPROVED`, pedido `PAID`) → segundo pago (409). Sin token → 401. Preflight CORS → 200.
+  - **Bug encontrado al probar**: `POST /orders` devuelve el id solo en el header `Location`, pero CORS no lo exponía, así que el frontend no podía leerlo desde el navegador. Los 5 `CorsConfig` ahora exponen `Location`.
+  - Warnings que quedan en los logs (no son errores): springdoc avisa que Swagger está activo en prod; order y payment no fijan `open-in-view` (queda en `true`); y todos generan un usuario en memoria con contraseña aleatoria (`UserDetailsServiceAutoConfiguration`), que no se usa porque solo hay autenticación por JWT. Se pueden silenciar excluyendo esa autoconfiguración.
 
 ---
 
