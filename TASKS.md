@@ -304,53 +304,71 @@ Con ~25 tests en todo el repo (188 desde el 02-nov), casi todos "happy path" sob
 
 ## Fase 6 — CI/CD con GitHub Actions
 
-- [ ] Crear `.github/workflows/ci.yml` con un job por servicio (matrix build) que corra `mvn -B verify` (compila + ejecuta tests) en cada push/PR a `develop`/`main`.
-- [ ] Usar `paths` en el trigger del workflow para que, si solo cambia `catalog-service/`, no se reconstruyan los otros 4 servicios (ahorra tiempo de CI).
-- [ ] Configurar cache de dependencias Maven con `actions/setup-java` (`cache: maven`) para acelerar los builds.
-- [ ] (Opcional) Job que construya la imagen Docker de cada servicio y la publique en GitHub Container Registry (`ghcr.io`) cuando se hace push a `main`.
+- [x] `.github/workflows/ci.yml` (04-nov): matriz por servicio con `mvn -B verify`, que compila, corre los tests y aplica el umbral de JaCoCo. Corre en cada push y PR a `develop` / `main`, y a mano con `workflow_dispatch`.
+  - Sube el reporte de JaCoCo de cada servicio como artifact, y los reportes de surefire cuando falla.
+  - `fail-fast: false`: si un servicio falla, los demás siguen.
+  - Un job final `ci` resume el resultado. **Es el único check que conviene marcar como requerido** en la protección de `develop` / `main` (Settings → Branches), porque los jobs de la matriz cambian según qué servicios se tocaron.
+  - **No probado en GitHub todavía**: el YAML se validó con SnakeYAML y la detección de cambios se simuló localmente con commits reales. La primera ejecución real va a ser el PR que lo agregue.
+- [x] Solo se prueban los servicios cambiados (04-nov). No se usa `paths` en el trigger: si el workflow no corre, un check requerido queda pendiente para siempre y bloquea el merge. En su lugar, el job `changes` compara con `git diff` (base del PR, o `before` del push) y arma la matriz:
+  - Simulado con commits reales: solo `catalog-service/` → `[catalog-service]`; solo `.vscode/` → `[]` (no corre ningún test y `ci` pasa); cambios en `.github/workflows/`, rama nueva o `workflow_dispatch` → los 5.
+- [x] Cache de Maven con `actions/setup-java` (`cache: maven`, con clave por el `pom.xml` de cada servicio) (04-nov).
+- [x] Job `docker` (04-nov): en un push a `main`, después de que pasen los tests, construye la imagen de cada servicio cambiado y la publica en `ghcr.io/<owner>/e-commerce-backend-<servicio>`, con los tags `latest` y el SHA. Usa el `GITHUB_TOKEN` (no hace falta configurar secretos) y el cache de capas de GitHub Actions.
+  - Los paquetes de ghcr.io se crean **privados**. Si Render va a descargar la imagen, hay que hacerlos públicos o darle credenciales (o que Render construya desde el Dockerfile, ver Fase 7).
 - [ ] *Nota sobre CD:* Render puede auto-desplegar al detectar un push a la rama configurada, sin que GitHub Actions tenga que "empujar" el deploy — el rol de Actions acá es simplemente garantizar que el código en `main` compila y pasa los tests antes de que Render lo tome.
 
 ---
 
 ## Fase 7 — Despliegue en Render
 
-- [ ] Crear `render.yaml` (Render Blueprint) en la raíz, definiendo 5 web services (uno por microservicio, runtime Docker) + las bases Postgres gestionadas que necesiten.
-- [ ] Configurar las variables de entorno de cada servicio en Render: `SPRING_PROFILES_ACTIVE=prod`, `DATABASE_URL` (Render la inyecta automáticamente al conectar una DB), `JWT_SECRET` (mismo valor en los 5), `INTERNAL_SERVICE_TOKEN` (mismo valor en order-service y payment-service; un valor largo y aleatorio, nunca el de desarrollo), y las URLs internas para que cada servicio encuentre a los demás (ej. `CATALOG_SERVICE_URL`).
-- [ ] Verificar que Render pueda usar `/actuator/health` como health check de cada servicio.
-- [ ] Confirmar que cada servicio arranca leyendo `PORT` desde el entorno (ver tarea de la Fase 3.2).
+- [x] `render.yaml` en la raíz (04-nov): 5 web services con runtime Docker (`rootDir` por servicio, así un push solo redespliega los servicios cuya carpeta cambió) y **una** base Postgres.
+  - **Una base, un esquema por servicio**: el plan free de Render permite una sola instancia de Postgres. Los 5 servicios comparten la base `ecommerce` con `DB_SCHEMA` = `auth` / `catalog` / `cart` / `orders` / `payment`. Cada perfil `prod` usa `currentSchema`, `spring.flyway.schemas` y `hibernate.default_schema`, y Flyway crea el esquema al arrancar. Para pasar a una base por servicio alcanza con agregar instancias en `databases:` y apuntar cada servicio a la suya.
+  - Todo en `oregon`: la red privada solo funciona dentro de una región.
+  - Pasos: Dashboard → New → Blueprint → este repo. Render pide `CORS_ALLOWED_ORIGINS`, `ADMIN_EMAIL` y `ADMIN_PASSWORD` (`sync: false`).
+  - **No probado en Render** (no tengo acceso a la cuenta). Se validó localmente con un compose que reproduce el blueprint: una base, 5 esquemas, `PORT=10000` y URLs por `host:puerto`. Los 5 arrancan sanos y el flujo carrito → pedido → pago funciona. Cosas a confirmar al crearlo:
+    - que Render acepte `sync: false` dentro de `envVarGroups` (si no, mover `CORS_ALLOWED_ORIGINS` a cada servicio);
+    - que los servicios del plan **free** puedan **recibir** tráfico por la red privada (si no, poner `CATALOG_SERVICE_URL`, `CART_SERVICE_URL` y `ORDER_SERVICE_URL` con las URLs públicas `https://<servicio>.onrender.com`, que tienen prioridad sobre `*_HOSTPORT`);
+    - en free los servicios se duermen tras ~15 min sin tráfico: la primera llamada de un servicio a otro dormido puede tardar ~1 min y fallar con 503;
+    - la base free de Render vence a los 30 días.
+- [x] Variables de entorno en el blueprint (04-nov):
+  - Grupo `ecommerce-shared`: `SPRING_PROFILES_ACTIVE=prod`; `JWT_SECRET` e `INTERNAL_SERVICE_TOKEN` con `generateValue` (Render genera un valor aleatorio una sola vez, el mismo para todos los servicios del grupo); `CORS_ALLOWED_ORIGINS`.
+  - **`DATABASE_URL` no sirve directo**: Render la da como `postgresql://user:pass@host/db`, sin `jdbc:`, y el blueprint no puede armar otra. Se pasan `DB_HOST` / `DB_PORT` / `DB_NAME` y usuario / contraseña con `fromDatabase`, y el perfil `prod` arma `jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}?currentSchema=${DB_SCHEMA}`. Si existe `SPRING_DATASOURCE_URL` (docker-compose), se usa esa.
+  - URLs entre servicios: `*_SERVICE_HOSTPORT` con `fromService` (`hostport` de la red privada); el perfil `prod` les antepone `http://`. `*_SERVICE_URL`, si existe, tiene prioridad.
+  - Sin las variables de base, `prod` sigue sin arrancar (probado: exit 1), aunque el error muestra la URL con `${DB_HOST}` literal en vez de "falta DB_HOST".
+- [x] `healthCheckPath: /actuator/health` en los 5. Es público y responde `UP` con el perfil `prod` (probado en docker-compose y en la simulación).
+- [x] Los 5 leen `PORT` (Fase 3.2). Probado en la simulación con `PORT=10000`, el valor por defecto de Render para Docker.
 
 ---
 
 ## Fase 8 — Documentación final
 
-- [ ] Agregar `cart-service/ReadMe.md` y `order-service/ReadMe.md` (auth, catalog y payment ya tienen el suyo).
-- [ ] **Corregir `auth-service/ReadMe.md`**:
+- [x] Agregar `cart-service/ReadMe.md` y `order-service/ReadMe.md` (auth, catalog y payment ya tienen el suyo).
+- [x] **Corregir `auth-service/ReadMe.md`**:
   - el ejemplo de registro manda `"roles": ["SUPER_ADMIN"]` (contradice la regla 1.1) y no incluye `fullname`, que es obligatorio;
   - la respuesta del login es `accessToken` / `tokenType` / `expiresIn`, no `token`;
   - documentar `/admin/users` y el SUPER_ADMIN inicial (`admin.*`);
-  - aclarar que `contextLoads` necesita Postgres.
-- [ ] **Corregir `catalog-service/ReadMe.md`**:
+  - aclarar que `contextLoads` necesita Postgres. *(Ya no lo necesita: usa el perfil `test` con H2.)*
+- [x] **Corregir `catalog-service/ReadMe.md`**:
   - las rutas reales son `/categories` y `/products`, no `/catalog/...`;
   - hay JSON inválido (coma sobrante);
   - la sección Docker menciona un `docker/` que no existe;
   - la contraseña de ejemplo (`postgresPassword`) no coincide con el YAML;
   - el "✅ Tests implementados" no es cierto hoy;
   - documentar la seguridad (GET público, escritura solo ADMIN/SUPER_ADMIN), los filtros `?categoryId=` y `?name=`, y los endpoints `GET /products/{id}`, PUT y DELETE.
-- [ ] **Alinear los OpenAPI con el código** (hoy ninguno coincide):
+- [x] **Alinear los OpenAPI con el código** (hoy ninguno coincide):
   - `auth.yaml`: dice `GET /users` y `PUT /users/{id}/role` con body; el código es `/admin/users` y POST con query param. También difieren `fullName` / `fullname` y la forma de `UserResponse` (`role` / `fullName` en el spec, `roles[]` / `enabled` en el código). Sacar `SUPER_ADMIN` del enum de `UpdateRoleRequest` y borrar el schema huérfano `CreateUserRequest`.
   - `cart.yaml`: `CartResponse` no tiene `id`, y el código responde `item` en vez de `items`.
   - `order.yaml`: ya describe el diseño objetivo (`address` solo). Falta agregar `POST /orders/{id}/pay`, `POST /orders/{id}/cancel` y las respuestas 401/403/404/409.
   - Actualizar `catalog.yaml` si cambian los DTOs al implementar la Fase 2.
-- [ ] **Actualizar `docs/busines-rules.md`** con las reglas que hoy no están escritas:
+- [x] **Actualizar `docs/busines-rules.md`** con las reglas que hoy no están escritas:
   - quién dispara el pago y cómo payment-service avisa a order-service;
   - que el precio siempre se recalcula en el servidor;
   - que el carrito se vacía al crear el pedido;
   - que un usuario deshabilitado no puede hacer login;
   - si un pago rechazado se puede reintentar.
   
-  Resolver también la contradicción con el README ("ADMIN: gestión de usuarios" frente a la regla 6.2, donde ADMIN solo lista). (Opcional: renombrar el archivo a `business-rules.md`.)
-- [ ] **Completar `docs/architecture/ReadMe.md`**: agregar una tabla de servicios/puertos/bases de datos, las dependencias síncronas entre servicios (cart→catalog, order→cart/catalog, payment→order) y un diagrama de secuencia del checkout.
-- [ ] Actualizar el `ReadMe.md` raíz:
+  Resolver también la contradicción con el README ("ADMIN: gestión de usuarios" frente a la regla 6.2, donde ADMIN solo lista). (Opcional: renombrar el archivo a `business-rules.md`; se dejó el nombre para no romper enlaces.)
+- [x] **Completar `docs/architecture/ReadMe.md`**: agregar una tabla de servicios/puertos/bases de datos, las dependencias síncronas entre servicios (cart→catalog, order→cart/catalog, payment→order) y un diagrama de secuencia del checkout.
+- [x] Actualizar el `ReadMe.md` raíz:
   - quitar Kubernetes (no está en el alcance actual) o moverlo a "futuras mejoras";
   - agregar prerequisitos, una tabla de puertos y enlaces a `docs/` y a este backlog;
   - documentar cómo levantar todo el stack local (`docker-compose up`) y qué variables de entorno configurar en Render;

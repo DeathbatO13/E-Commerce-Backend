@@ -1,10 +1,15 @@
 openapi: 3.0.3
 info:
-  title: Auth & User Service API
-  description: >
-    Servicio de autenticación y gestión de usuarios para la plataforma E-commerce.
-    Maneja login, registro, roles y emisión de JWT.
-  version: 1.0.0
+  title: Auth Service API
+  description: |
+    Registro, login con JWT y administración de usuarios.
+
+    El JWT que emite este servicio lo validan los otros 4 servicios con el mismo `JWT_SECRET`.
+    Lleva el id del usuario en `sub` y sus roles en el claim `roles` (CLIENT, ADMIN o SUPER_ADMIN).
+
+    Sin token, o con un token inválido o vencido, los endpoints protegidos responden **401 sin cuerpo**.
+    Con un token válido pero sin el rol necesario responden **403**.
+  version: 2.0.0
 
 servers:
   - url: http://localhost:8081
@@ -12,41 +17,16 @@ servers:
 
 tags:
   - name: Auth
-    description: Autenticación
-  - name: Users
-    description: Gestión de usuarios
+    description: Registro y login (públicos)
+  - name: Admin
+    description: Administración de usuarios
 
 paths:
-  /auth/login:
-    post:
-      tags: [Auth]
-      summary: Login de usuario
-      description: Autentica un usuario y retorna un JWT.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/LoginRequest'
-      responses:
-        '200':
-          description: Autenticación exitosa
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/LoginResponse'
-        '401':
-          description: Credenciales inválidas
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-
   /auth/register:
     post:
       tags: [Auth]
-      summary: Registro de usuario cliente
-      description: Registra un nuevo usuario con rol CLIENT.
+      summary: Registrar un usuario
+      description: Todo usuario nuevo queda con el rol CLIENT. No se puede elegir el rol al registrarse.
       requestBody:
         required: true
         content:
@@ -55,18 +35,53 @@ paths:
               $ref: '#/components/schemas/RegisterRequest'
       responses:
         '201':
-          description: Usuario registrado
-        '400':
-          description: Datos inválidos
+          description: Usuario creado
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiError'
+                $ref: '#/components/schemas/RegisterResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: El email ya está registrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
-  /users:
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Iniciar sesión
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login correcto
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          description: |
+            Email o contraseña incorrectos, o usuario deshabilitado. El estado "deshabilitado"
+            solo se informa si la contraseña es correcta, para no revelar qué cuentas existen.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /admin/users:
     get:
-      tags: [Users]
+      tags: [Admin]
       summary: Listar usuarios
+      description: Solo ADMIN y SUPER_ADMIN.
       security:
         - bearerAuth: []
       responses:
@@ -78,17 +93,18 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/UserResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '403':
-          description: Acceso denegado
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
+          $ref: '#/components/responses/Forbidden'
 
-  /users/{id}/role:
-    put:
-      tags: [Users]
-      summary: Cambiar rol de usuario
+  /admin/users/{id}/role:
+    post:
+      tags: [Admin]
+      summary: Cambiar el rol de un usuario
+      description: |
+        Solo SUPER_ADMIN. Reemplaza el rol del usuario por el indicado (CLIENT o ADMIN).
+        No se puede asignar SUPER_ADMIN ni cambiar el rol del SUPER_ADMIN.
       security:
         - bearerAuth: []
       parameters:
@@ -97,21 +113,34 @@ paths:
           required: true
           schema:
             type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UpdateRoleRequest'
+            format: uuid
+        - name: role
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [CLIENT, ADMIN]
       responses:
         '200':
-          description: Rol actualizado
-        '404':
-          description: Usuario no encontrado
+          description: Rol actualizado (sin cuerpo)
+        '400':
+          description: Rol inválido o intento de asignar SUPER_ADMIN
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiError'
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: El usuario es el SUPER_ADMIN; su rol no se puede cambiar
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
 components:
   securitySchemes:
@@ -120,7 +149,54 @@ components:
       scheme: bearer
       bearerFormat: JWT
 
+  responses:
+    BadRequest:
+      description: Datos inválidos (validación o JSON mal formado)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Unauthorized:
+      description: Falta el token o es inválido / vencido (sin cuerpo)
+    Forbidden:
+      description: El token no tiene el rol necesario
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFound:
+      description: Recurso inexistente
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
   schemas:
+    RegisterRequest:
+      type: object
+      required: [email, password, fullname]
+      properties:
+        email:
+          type: string
+          format: email
+          example: cliente@example.com
+        password:
+          type: string
+          format: password
+        fullname:
+          type: string
+          example: Ana Pérez
+
+    RegisterResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+
     LoginRequest:
       type: object
       required: [email, password]
@@ -137,69 +213,44 @@ components:
       properties:
         accessToken:
           type: string
+          description: "JWT para el header `Authorization: Bearer <accessToken>`"
         tokenType:
           type: string
           example: Bearer
         expiresIn:
           type: integer
-          example: 3600
-
-    RegisterRequest:
-      type: object
-      required: [email, password, fullName]
-      properties:
-        email:
-          type: string
-          format: email
-        password:
-          type: string
-        fullName:
-          type: string
-
-    CreateUserRequest:
-      type: object
-      required: [email, password, role]
-      properties:
-        email:
-          type: string
-          format: email
-        password:
-          type: string
-        role:
-          type: string
-          enum: [CLIENT, ADMIN]
-
-    UpdateRoleRequest:
-      type: object
-      required: [role]
-      properties:
-        role:
-          type: string
-          enum: [CLIENT, ADMIN, SUPER_ADMIN]
+          description: Segundos hasta que vence el token
+          example: 86400
 
     UserResponse:
       type: object
       properties:
         id:
           type: string
+          format: uuid
         email:
           type: string
-        fullName:
-          type: string
-        role:
-          type: string
+          format: email
+        roles:
+          type: array
+          items:
+            type: string
+            enum: [CLIENT, ADMIN, SUPER_ADMIN]
+        enabled:
+          type: boolean
 
-    ApiError:
+    ErrorResponse:
       type: object
       properties:
+        status:
+          type: integer
+          example: 409
+        error:
+          type: string
+          example: Conflict
+        message:
+          type: string
+          example: Email already registered
         timestamp:
           type: string
           format: date-time
-        status:
-          type: integer
-        error:
-          type: string
-        message:
-          type: string
-        path:
-          type: string

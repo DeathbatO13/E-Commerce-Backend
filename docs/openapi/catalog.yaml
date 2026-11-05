@@ -1,10 +1,15 @@
 openapi: 3.0.3
 info:
   title: Catalog Service API
-  description: >
-    Servicio de catálogo del E-commerce.
-    Gestiona productos y categorías.
-  version: 1.0.0
+  description: |
+    Productos y categorías.
+
+    - Los `GET` son **públicos** (no necesitan token).
+    - Crear, modificar y borrar requiere un JWT con rol **ADMIN** o **SUPER_ADMIN**.
+      Sin token responde **401 sin cuerpo**; con otro rol, **403**.
+    - Borrar es lógico (`active = false`): los productos y categorías inactivos dejan de aparecer
+      en los listados y en `GET /products/{id}`.
+  version: 2.0.0
 
 servers:
   - url: http://localhost:8082
@@ -12,26 +17,22 @@ servers:
 
 tags:
   - name: Categories
-    description: Gestión de categorías
   - name: Products
-    description: Gestión de productos
 
 paths:
   /categories:
     get:
       tags: [Categories]
-      summary: Listar categorías
-      description: Obtiene todas las categorías disponibles.
+      summary: Listar categorías activas
       responses:
         '200':
-          description: Lista de categorías
+          description: Categorías activas
           content:
             application/json:
               schema:
                 type: array
                 items:
                   $ref: '#/components/schemas/CategoryResponse'
-
     post:
       tags: [Categories]
       summary: Crear categoría
@@ -46,25 +47,31 @@ paths:
       responses:
         '201':
           description: Categoría creada
-        '403':
-          description: Acceso denegado
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiError'
+                $ref: '#/components/schemas/CategoryResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: Ya existe una categoría activa con ese nombre
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /categories/{id}:
+    parameters:
+      - $ref: '#/components/parameters/Id'
     put:
       tags: [Categories]
-      summary: Actualizar categoría
+      summary: Renombrar categoría
       security:
         - bearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
       requestBody:
         required: true
         content:
@@ -74,58 +81,70 @@ paths:
       responses:
         '200':
           description: Categoría actualizada
-        '404':
-          description: Categoría no encontrada
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiError'
-
+                $ref: '#/components/schemas/CategoryResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
     delete:
       tags: [Categories]
-      summary: Eliminar categoría
+      summary: Desactivar categoría
+      description: No se puede desactivar una categoría que tiene productos activos.
       security:
         - bearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
       responses:
         '204':
-          description: Categoría eliminada
+          description: Categoría desactivada
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '404':
-          description: Categoría no encontrada
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: La categoría tiene productos activos
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiError'
+                $ref: '#/components/schemas/ErrorResponse'
 
   /products:
     get:
       tags: [Products]
-      summary: Listar productos
-      description: Lista productos con filtros opcionales.
+      summary: Listar productos activos
+      description: |
+        Sin filtros devuelve todos los productos activos. Si se envían los dos filtros,
+        `categoryId` tiene prioridad y `name` se ignora.
       parameters:
         - name: categoryId
           in: query
+          required: false
           schema:
             type: string
-        - name: active
+            format: uuid
+        - name: name
           in: query
+          required: false
+          description: Búsqueda parcial, sin distinguir mayúsculas
           schema:
-            type: boolean
+            type: string
+            example: tv
       responses:
         '200':
-          description: Lista de productos
+          description: Productos activos
           content:
             application/json:
               schema:
                 type: array
                 items:
                   $ref: '#/components/schemas/ProductResponse'
-
     post:
       tags: [Products]
       summary: Crear producto
@@ -136,88 +155,88 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ProductRequest'
+              $ref: '#/components/schemas/CreateProductRequest'
       responses:
         '201':
           description: Producto creado
-        '403':
-          description: Acceso denegado
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiError'
+                $ref: '#/components/schemas/ProductResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: La categoría no existe o está inactiva
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /products/{id}:
+    parameters:
+      - $ref: '#/components/parameters/Id'
     get:
       tags: [Products]
-      summary: Obtener producto por ID
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
+      summary: Obtener producto
+      description: cart-service y order-service usan este endpoint para tomar el precio vigente.
       responses:
         '200':
-          description: Producto encontrado
+          description: Producto activo
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProductResponse'
         '404':
-          description: Producto no encontrado
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-
+          $ref: '#/components/responses/NotFound'
     put:
       tags: [Products]
-      summary: Actualizar producto
+      summary: Modificar producto
+      description: Reemplaza todos los campos. No crea el producto si no existe.
       security:
         - bearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ProductRequest'
+              $ref: '#/components/schemas/UpdateProductRequest'
       responses:
         '200':
           description: Producto actualizado
-        '404':
-          description: Producto no encontrado
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiError'
-
+                $ref: '#/components/schemas/ProductResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: El producto o la categoría no existen
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
     delete:
       tags: [Products]
-      summary: Eliminar producto
+      summary: Desactivar producto
       security:
         - bearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
       responses:
         '204':
-          description: Producto eliminado
+          description: Producto desactivado
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '404':
-          description: Producto no encontrado
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
+          $ref: '#/components/responses/NotFound'
 
 components:
   securitySchemes:
@@ -226,6 +245,37 @@ components:
       scheme: bearer
       bearerFormat: JWT
 
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  responses:
+    BadRequest:
+      description: Datos inválidos (validación, JSON mal formado o UUID inválido)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Unauthorized:
+      description: Falta el token o es inválido / vencido (sin cuerpo)
+    Forbidden:
+      description: El token no tiene rol ADMIN ni SUPER_ADMIN
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFound:
+      description: No existe o está inactivo
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
   schemas:
     CategoryRequest:
       type: object
@@ -233,63 +283,83 @@ components:
       properties:
         name:
           type: string
-        description:
-          type: string
+          example: Electrónica
 
     CategoryResponse:
       type: object
       properties:
         id:
           type: string
+          format: uuid
         name:
-          type: string
-        description:
-          type: string
-
-    ProductRequest:
-      type: object
-      required: [name, price, categoryId]
-      properties:
-        name:
-          type: string
-        description:
-          type: string
-        price:
-          type: number
-          format: double
-        categoryId:
           type: string
         active:
           type: boolean
-          default: true
+
+    CreateProductRequest:
+      type: object
+      required: [name, description, price, categoryId]
+      properties:
+        name:
+          type: string
+          example: TV LCD 55"
+        description:
+          type: string
+          example: Smart TV 4K
+        price:
+          type: number
+          minimum: 0
+          exclusiveMinimum: true
+          example: 899.90
+        stock:
+          type: integer
+          minimum: 0
+          example: 10
+        categoryId:
+          type: string
+          format: uuid
+
+    UpdateProductRequest:
+      allOf:
+        - $ref: '#/components/schemas/CreateProductRequest'
+        - type: object
+          properties:
+            active:
+              type: boolean
+              description: Si se omite, el producto queda inactivo
 
     ProductResponse:
       type: object
       properties:
         id:
           type: string
+          format: uuid
         name:
           type: string
         description:
           type: string
         price:
           type: number
+        stock:
+          type: integer
+        categoryId:
+          type: string
+          format: uuid
         active:
           type: boolean
-        category:
-          $ref: '#/components/schemas/CategoryResponse'
 
-    ApiError:
+    ErrorResponse:
       type: object
       properties:
+        status:
+          type: integer
+          example: 404
+        error:
+          type: string
+          example: Not Found
+        message:
+          type: string
+          example: Product not found
         timestamp:
           type: string
           format: date-time
-        status:
-          type: integer
-        error:
-          type: string
-        message:
-          type: string
-        path:
-          type: string

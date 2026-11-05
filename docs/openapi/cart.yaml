@@ -1,8 +1,14 @@
 openapi: 3.0.3
 info:
   title: Cart Service API
-  description: Servicio de carrito de compras del E-commerce.
-  version: 1.0.0
+  description: |
+    Carrito del usuario autenticado (un carrito por usuario; el usuario sale del `sub` del JWT).
+
+    - Requiere un JWT con rol **CLIENT** o **ADMIN**. Sin token responde **401 sin cuerpo**;
+      con otro rol (p. ej. SUPER_ADMIN), **403**.
+    - El precio de cada item **no lo manda el cliente**: cart-service lo pide a catalog-service
+      (`GET /products/{id}`) al agregar el producto, y rechaza productos inexistentes o inactivos.
+  version: 2.0.0
 
 servers:
   - url: http://localhost:8083
@@ -10,40 +16,48 @@ servers:
 
 tags:
   - name: Cart
-    description: Gestión del carrito de compras
+
+security:
+  - bearerAuth: []
 
 paths:
   /cart:
     get:
       tags: [Cart]
-      summary: Obtener carrito del usuario autenticado
-      security:
-        - bearerAuth: []
+      summary: Ver mi carrito
+      description: |
+        Si el usuario todavía no tiene carrito, devuelve uno vacío (sin guardarlo; el carrito se
+        crea al agregar el primer producto).
       responses:
         '200':
-          description: Carrito del usuario
+          description: Carrito actual
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/CartResponse'
         '401':
-          description: No autenticado
-
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
     delete:
       tags: [Cart]
-      summary: Vaciar carrito
-      security:
-        - bearerAuth: []
+      summary: Vaciar mi carrito
+      description: order-service lo llama, con el token del usuario, después de crear un pedido.
       responses:
         '204':
           description: Carrito vaciado
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/CartNotFound'
 
   /cart/items:
     post:
       tags: [Cart]
-      summary: Agregar producto al carrito
-      security:
-        - bearerAuth: []
+      summary: Agregar un producto
+      description: Si el producto ya está en el carrito, suma la cantidad.
       requestBody:
         required: true
         content:
@@ -52,20 +66,40 @@ paths:
               $ref: '#/components/schemas/AddItemRequest'
       responses:
         '200':
-          description: Producto agregado al carrito
+          description: Carrito actualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CartResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: El producto no existe o está inactivo en catalog-service
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '502':
+          $ref: '#/components/responses/BadGateway'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
 
   /cart/items/{productId}:
+    parameters:
+      - name: productId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
     put:
       tags: [Cart]
-      summary: Actualizar cantidad de un producto
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: productId
-          in: path
-          required: true
-          schema:
-            type: string
+      summary: Cambiar la cantidad de un producto
+      description: Reemplaza la cantidad (no la suma). Para quitar el producto usar DELETE.
       requestBody:
         required: true
         content:
@@ -74,22 +108,35 @@ paths:
               $ref: '#/components/schemas/UpdateItemRequest'
       responses:
         '200':
-          description: Cantidad actualizada
-
+          description: Carrito actualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CartResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: El usuario no tiene carrito o el producto no está en el carrito
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
     delete:
       tags: [Cart]
-      summary: Eliminar producto del carrito
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: productId
-          in: path
-          required: true
-          schema:
-            type: string
+      summary: Quitar un producto
       responses:
         '204':
-          description: Producto eliminado del carrito
+          description: Producto quitado (si no estaba en el carrito, no hace nada)
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/CartNotFound'
 
 components:
   securitySchemes:
@@ -98,6 +145,40 @@ components:
       scheme: bearer
       bearerFormat: JWT
 
+  responses:
+    BadRequest:
+      description: Datos inválidos (validación, JSON mal formado o UUID inválido)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Unauthorized:
+      description: Falta el token o es inválido / vencido (sin cuerpo)
+    Forbidden:
+      description: El token no tiene rol CLIENT ni ADMIN
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    CartNotFound:
+      description: El usuario no tiene carrito
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    BadGateway:
+      description: catalog-service respondió con un error inesperado
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    ServiceUnavailable:
+      description: catalog-service no responde
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
   schemas:
     AddItemRequest:
       type: object
@@ -105,9 +186,11 @@ components:
       properties:
         productId:
           type: string
+          format: uuid
         quantity:
           type: integer
           minimum: 1
+          example: 2
 
     UpdateItemRequest:
       type: object
@@ -116,25 +199,49 @@ components:
         quantity:
           type: integer
           minimum: 1
+          example: 3
 
-    CartItem:
+    CartItemResponse:
       type: object
       properties:
         productId:
           type: string
+          format: uuid
         quantity:
           type: integer
         price:
           type: number
+          description: Precio unitario tomado de catalog-service al agregar el producto
 
     CartResponse:
       type: object
       properties:
+        id:
+          type: string
+          format: uuid
         userId:
           type: string
+          format: uuid
         items:
           type: array
           items:
-            $ref: '#/components/schemas/CartItem'
+            $ref: '#/components/schemas/CartItemResponse'
         total:
           type: number
+          example: 50.00
+
+    ErrorResponse:
+      type: object
+      properties:
+        status:
+          type: integer
+          example: 404
+        error:
+          type: string
+          example: Not Found
+        message:
+          type: string
+          example: Cart not found
+        timestamp:
+          type: string
+          format: date-time

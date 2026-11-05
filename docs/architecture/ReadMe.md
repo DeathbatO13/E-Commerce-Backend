@@ -128,12 +128,105 @@ Cada microservicio cuenta con su **propia base de datos**, garantizando:
 
 ---
 
+## 🗺️ Servicios, puertos y bases de datos
+
+| Servicio | Puerto | Base local / Docker | Esquema en Render | README | Contrato |
+|---|---|---|---|---|---|
+| auth-service | 8081 | `auth_db` | `auth` | [ReadMe](../../auth-service/ReadMe.md) | [auth.yaml](../openapi/auth.yaml) |
+| catalog-service | 8082 | `catalog_db` | `catalog` | [ReadMe](../../catalog-service/ReadMe.md) | [catalog.yaml](../openapi/catalog.yaml) |
+| cart-service | 8083 | `cart_db` | `cart` | [ReadMe](../../cart-service/ReadMe.md) | [cart.yaml](../openapi/cart.yaml) |
+| order-service | 8084 | `order_db` | `orders` | [ReadMe](../../order-service/ReadMe.md) | [order.yaml](../openapi/order.yaml) |
+| payment-service | 8085 | `payment_db` | `payment` | [ReadMe](../../payment-service/ReadMe.md) | [payment.yaml](../openapi/payment.yaml) |
+
+* En local y en Docker cada servicio tiene **su propia base** en un único Postgres (el compose crea las cinco con `docker/postgres/init-databases.sql`).
+* En Render el plan gratuito permite una sola base, así que cada servicio usa **su propio esquema** (`DB_SCHEMA`). Ningún servicio lee tablas de otro: el aislamiento se mantiene.
+* El esquema lo crea Flyway (`V1__...sql`) y Hibernate solo lo valida.
+
+---
+
+## 🔗 Dependencias síncronas entre servicios
+
+```mermaid
+flowchart LR
+    FE[Frontend] --> AUTH[auth-service]
+    FE --> CATALOG[catalog-service]
+    FE --> CART[cart-service]
+    FE --> ORDER[order-service]
+    FE --> PAYMENT[payment-service]
+    CART -- "GET /products/{id}<br/>(precio, existe y activo)" --> CATALOG
+    ORDER -- "GET /cart, DELETE /cart<br/>(token del usuario)" --> CART
+    ORDER -- "GET /products/{id}<br/>(precio vigente)" --> CATALOG
+    PAYMENT -- "GET /orders/{id}<br/>(token del usuario)" --> ORDER
+    PAYMENT -- "POST /orders/{id}/pay<br/>(X-Internal-Token)" --> ORDER
+```
+
+| Llamada | Autenticación | Si el destino falla |
+|---|---|---|
+| cart → catalog | ninguna (`GET` público) | 404 si el producto no existe; 502 / 503 |
+| order → cart | reenvía el JWT del usuario | 401 si cart rechaza el token; 502 / 503 |
+| order → catalog | ninguna (`GET` público) | 404 si algún producto ya no existe; 502 / 503 |
+| payment → order (consulta) | reenvía el JWT del usuario | 403 / 404 / 409 según el pedido; 502 / 503 |
+| payment → order (`/pay`) | token interno `X-Internal-Token` | 502 / 503 |
+
+* **502**: el otro servicio respondió con un error inesperado. **503**: no respondió.
+* auth-service no recibe llamadas de otros servicios: cada servicio valida el JWT localmente con el mismo `JWT_SECRET`.
+
+---
+
+## 🛒 Secuencia del checkout
+
+```mermaid
+sequenceDiagram
+    actor U as Cliente
+    participant A as auth
+    participant C as cart
+    participant K as catalog
+    participant O as order
+    participant P as payment
+
+    U->>A: POST /auth/login
+    A-->>U: accessToken (JWT)
+
+    U->>C: POST /cart/items {productId, quantity}
+    C->>K: GET /products/{id}
+    K-->>C: precio, activo
+    C-->>U: carrito con total
+
+    U->>O: POST /orders {address}
+    O->>C: GET /cart (JWT del usuario)
+    C-->>O: items
+    loop por cada item
+        O->>K: GET /products/{id}
+        K-->>O: precio vigente
+    end
+    O->>O: guarda pedido CREATED con el total recalculado
+    O->>C: DELETE /cart
+    O-->>U: 201 Location: /orders/{id}
+
+    U->>P: POST /payments/process {orderId, amount}
+    P->>O: GET /orders/{id} (JWT del usuario)
+    O-->>P: dueño, estado CREATED, total
+    P->>P: valida amount = total y registra el pago
+    alt APPROVED
+        P->>O: POST /orders/{id}/pay (X-Internal-Token)
+        O-->>P: pedido PAID
+    else REJECTED
+        Note over P,O: el pedido sigue CREATED y se puede reintentar
+    end
+    P-->>U: {status, transactionId}
+```
+
+---
+
 ## 🧠 Decisiones arquitectónicas clave
 
 * Separación total entre frontend y backend
 * Un microservicio por dominio de negocio
 * Una base de datos por microservicio
 * Pagos simulados para evitar dependencias externas
+* El precio vive solo en catalog-service y se recalcula en el servidor
+* JWT validado localmente en cada servicio (sin llamar a auth en cada request)
+* Token interno de servicio para la única operación que no puede hacer un usuario (marcar un pedido como pagado)
 * Arquitectura orientada a escalabilidad y mantenibilidad
 
 ---

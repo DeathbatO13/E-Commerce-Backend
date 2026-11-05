@@ -2,17 +2,30 @@
 # Sin valores por defecto para los secretos: si falta una variable, el servicio no arranca.
 spring:
   datasource:
-    url: ${SPRING_DATASOURCE_URL}
+    # docker-compose pasa SPRING_DATASOURCE_URL completa. Render no puede (su connectionString no es
+    # JDBC), así que el blueprint pasa las partes y la URL se arma acá.
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}?currentSchema=${DB_SCHEMA:public}}
     username: ${SPRING_DATASOURCE_USERNAME}
     password: ${SPRING_DATASOURCE_PASSWORD}
+  # Con DB_SCHEMA varios servicios comparten una base (plan free de Render) con un esquema cada uno
+  flyway:
+    schemas: ${DB_SCHEMA:public}
   jpa:
     show-sql: false
+    properties:
+      hibernate:
+        default_schema: ${DB_SCHEMA:public}
     hibernate:
       ddl-auto: validate
 
 security:
   jwt:
     secret: ${JWT_SECRET}
+
+# URLs de los otros servicios: completas (docker-compose) o host:puerto de la red privada (render.yaml)
+catalog:
+  service:
+    url: ${CATALOG_SERVICE_URL:http://${CATALOG_SERVICE_HOSTPORT}}
 
 cors:
   allowed-origins: ${CORS_ALLOWED_ORIGINS}

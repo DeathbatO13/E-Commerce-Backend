@@ -1,209 +1,131 @@
 # Catalog Service
 
-Microservicio de catálogo para la plataforma **E-Commerce Backend**.  
-Es responsable de la gestión de productos y categorías, exponiendo una API REST y aplicando **Arquitectura Hexagonal (Ports & Adapters)** para mantener un dominio desacoplado de la infraestructura.
+Productos y categorías de la plataforma **E-Commerce Backend**.
+Además de servir el catálogo al frontend, es la **fuente del precio**: cart-service y order-service le piden el precio vigente de cada producto.
+
+Puerto por defecto: **8082**. Contrato: [`docs/openapi/catalog.yaml`](../docs/openapi/catalog.yaml).
 
 ---
 
 ## Tecnologías
 
-* Java 17+
-* Spring Boot
-* Spring Web
-* Spring Data JPA
-* Maven
-* Docker
-* PostgreSQL (producción)
-* H2 (tests)
-* JUnit 5
-* Mockito
+* Java 17, Spring Boot 3.5
+* Spring Web, Spring Security (JWT), Spring Data JPA
+* PostgreSQL + Flyway (`V1__create_catalog_tables.sql`)
+* JUnit 5, Mockito, MockMvc, H2 (tests)
 
 ---
 
 ## Arquitectura
 
-El servicio implementa **Arquitectura Hexagonal**, separando claramente:
+Arquitectura hexagonal:
 
-* **Dominio**: entidades y reglas de negocio
-* **Aplicación**: casos de uso
-* **Adaptadores**: entrada (REST) y salida (persistencia)
-
-Esto permite:
-* Probar la lógica de negocio sin dependencias externas
-* Cambiar la base de datos sin afectar el dominio
-* Mantener un código limpio y escalable
-
----
-
-## Estructura del Proyecto
-
-    com.e_commerce.catalog_service
-    │
-    ├── adapter
-    │ ├── in
-    │ │ └── rest
-    │ │ ├── dto
-    │ │ │ ├── request
-    │ │ │ └── response
-    │ │ ├── CategoryController
-    │ │ └── ProductController
-    │ │
-    │ └── out
-    │ └── persistence
-    │ ├── entity
-    │ ├── mapper
-    │ ├── repository
-    │ ├── CategoryAdapter
-    │ └── ProductAdapter
-    │
-    ├── application
-    │ └── service
-    │ ├── CategoryApplicationService
-    │ └── ProductApplicationService
-    │
-    ├── domain
-    │ ├── model
-    │ │ ├── Category
-    │ │ └── Product
-    │ │
-    │ └── port
-    │ ├── in
-    │ │ ├── CreateCategoryUseCase
-    │ │ ├── UpdateCategoryUseCase
-    │ │ ├── DeleteCategoryUseCase
-    │ │ ├── ListCategoriesUseCase
-    │ │ ├── CreateProductUseCase
-    │ │ ├── UpdateProductUseCase
-    │ │ ├── DeleteProductUseCase
-    │ │ ├── GetProductUseCase
-    │ │ ├── ListProductUseCase
-    │ │ └── SearchProductUseCase
-    │ │
-    │ └── out
-    │ ├── CategoryRepository
-    │ └── ProductRepository
-    │
-    └── CatalogServiceApplication
-
----
-
-## Configuración
-
-Variables principales en `application.yml`:
-
-```yaml
-  spring:
-    datasource:
-      url: jdbc:postgresql://localhost:5432/catalog_db
-      username: postgres
-      password: postgresPassword
-      driver-class-name: org.postgresql.Driver
-
-    jpa:
-      hibernate:
-        ddl-auto: update
-      show-sql: true
-      properties:
-        hibernate:
-          format_sql: true
+```
+domain/
+  model/        Product, Category (Product valida nombre, precio > 0, stock >= 0 y categoría)
+  port/in/      casos de uso (Create/Update/Delete/List/Get/Search ...)
+  port/out/     ProductRepository, CategoryRepository
+application/
+  service/      ProductApplicationService, CategoryApplicationService
+adapter/
+  in/rest/      ProductController, CategoryController, DTOs, GlobalExceptionHandler
+  out/persistence/  ProductAdapter, CategoryAdapter (JPA), mappers
+config/         SecurityConfig, JwtAuthFilter, JwtProvider, CorsConfig
 ```
 
-La base de datos productiva debe crearse externamente (PostgreSQL).  
-Para tests se utiliza **H2 en memoria**.
+---
+
+## Seguridad
+
+* Todos los `GET` son **públicos**: se puede navegar el catálogo sin login (un token vencido no bloquea la navegación).
+* `POST`, `PUT` y `DELETE` requieren un JWT con rol **ADMIN** o **SUPER_ADMIN**: sin token responden 401, con otro rol 403.
 
 ---
 
 ## Endpoints
 
-### Crear categoría
+| Método | Ruta | Acceso | Notas |
+|---|---|---|---|
+| GET | `/categories` | público | Solo categorías activas |
+| POST | `/categories` | ADMIN | 201 · 409 si ya existe una activa con ese nombre |
+| PUT | `/categories/{id}` | ADMIN | Renombra · 404 |
+| DELETE | `/categories/{id}` | ADMIN | 204 · 409 si tiene productos activos |
+| GET | `/products` | público | Filtros opcionales `?categoryId=` o `?name=` |
+| GET | `/products/{id}` | público | 404 si no existe o está inactivo |
+| POST | `/products` | ADMIN | 201 · 404 si la categoría no existe o está inactiva |
+| PUT | `/products/{id}` | ADMIN | Reemplaza todos los campos · 404 si el producto no existe (no lo crea) |
+| DELETE | `/products/{id}` | ADMIN | 204 |
 
-**POST** `/catalog/categories`
+"ADMIN" quiere decir ADMIN o SUPER_ADMIN.
 
-Request:
+**Borrado lógico**: `DELETE` pone `active = false`. Lo inactivo deja de aparecer en los listados y en `GET /products/{id}`, así que tampoco se puede agregar al carrito.
 
-```json
+**Búsqueda**: `?name=tv` busca por coincidencia parcial sin distinguir mayúsculas. Si se envían los dos filtros, `categoryId` tiene prioridad.
+
+### Crear un producto
+
+```http
+POST /products
+Authorization: Bearer <token ADMIN>
+Content-Type: application/json
+
 {
-  "name": "Electronics",
+  "name": "TV LCD 55\"",
+  "description": "Smart TV 4K",
+  "price": 899.90,
+  "stock": 10,
+  "categoryId": "b5f1a3c4-2f1b-4f7a-9f6e-9a2e6d9c1f44"
 }
 ```
-Response 201 Created:
 
 ```json
 {
-  "id": "b5f1a3c4-2f1b-4f7a-9f6e-9a2e6d9c1f44",
-  "name": "Electronics",
+  "id": "107b770c-bf8a-4f1e-9259-1536fbbe5ebf",
+  "name": "TV LCD 55\"",
+  "description": "Smart TV 4K",
+  "price": 899.90,
+  "stock": 10,
+  "categoryId": "b5f1a3c4-2f1b-4f7a-9f6e-9a2e6d9c1f44",
   "active": true
 }
 ```
 
-### Listar categorías
+En `PUT /products/{id}` el body es el mismo más `active`. **Si se omite `active`, el producto queda inactivo.**
 
-**GET** `/catalog/categories`
+---
 
-Response 200 OK:
+## Configuración
 
+| Propiedad | Variable de entorno | Valor por defecto |
+|---|---|---|
+| `server.port` | `PORT` | `8082` |
+| `spring.datasource.url` | `SPRING_DATASOURCE_URL` (o `DB_HOST` / `DB_PORT` / `DB_NAME` en `prod`) | `jdbc:postgresql://localhost:5432/catalog_db` |
+| `spring.datasource.username` / `password` | `SPRING_DATASOURCE_USERNAME` / `SPRING_DATASOURCE_PASSWORD` | `postgres` / `postgres` |
+| `security.jwt.secret` | `JWT_SECRET` | clave de desarrollo (**mismo valor en los 5 servicios**) |
+| `cors.allowed-origins` | `CORS_ALLOWED_ORIGINS` | `http://localhost:5001,http://localhost:5173` |
 
-```json
-[
-    {
-        "id": "32e33b1a-9aff-4a8e-ad33-528e88f517f3",
-        "name": "Tech",
-        "active": true
-    },
-    {
-        "id": "b83649e3-d0c2-4bfd-a0a8-77bb93ab774d",
-        "name": "Books",
-        "active": true
-    },
-    {
-        "id": "2473a39c-9339-45b3-b723-86c25afe83ed",
-        "name": "Toys",
-        "active": true
-    }
-]
+El esquema lo crea Flyway y Hibernate solo lo valida (`ddl-auto: validate`), así que la base `catalog_db` tiene que existir antes de arrancar.
+
+---
+
+## Ejecutar
+
+```bash
+./mvnw spring-boot:run
 ```
 
-### Crear producto
-
-**POST** `/catalog/products`
-
-📸 Screenshot Postman:
-
-![post](img/post-products.png)
-
-
-### Listar productos
-
-**Get** `/catalog/products`
-
-📸 Screenshot Postman:
-
-![post](img/get-products.png)
-
+O todo el stack con Docker desde la raíz del repo (ver el [ReadMe raíz](../ReadMe.md)).
 
 ## Tests
 
-* Tests unitarios con JUnit 5 y Mockito
-* Sin dependencia de base de datos real
-* Configuración en `application-test.yml`
-
-## Docker
-
-El Dockerfile se encuentra en el directorio `docker/`. El build debe ejecutarse desde la raíz del proyecto para que el JAR generado en `target/` sea accesible.
-
-Ejemplo:
-
 ```bash
-mvn clean package
-
-docker build -f docker/Dockerfile -t catalog-service .
+./mvnw verify
 ```
 
-## Estado
+* `ProductTest`: invariantes del dominio.
+* `ProductServiceTest` / `CategoryServiceTest`: casos de uso (Mockito).
+* `ProductControllerTest` / `CategoryControllerTest`: códigos HTTP y seguridad con el `JwtAuthFilter` real.
+* `CatalogPersistenceAdapterTest`: mapeo JPA y borrado lógico (`@DataJpaTest`).
+* `FlywayMigrationTest`: la migración coincide con las entidades JPA.
 
-- ✅ CRUD de categorías
-- ✅ CRUD de productos
-- ✅ Arquitectura hexagonal aplicada
-- ✅ Tests implementados
-- ✅ Integrable con Auth Service
-
+Ningún test necesita Postgres: usan H2 con el perfil `test`.
