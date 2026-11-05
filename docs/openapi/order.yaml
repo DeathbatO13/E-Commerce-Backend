@@ -1,8 +1,19 @@
 openapi: 3.0.3
 info:
   title: Order Service API
-  description: Servicio de pedidos del E-commerce.
-  version: 1.0.0
+  description: |
+    Pedidos creados a partir del carrito del usuario.
+
+    - Requiere un JWT con rol **CLIENT**, **ADMIN** o **SUPER_ADMIN**. Sin token responde
+      **401 sin cuerpo**.
+    - Un CLIENT solo ve y cancela sus propios pedidos (403 con los de otro usuario).
+      ADMIN y SUPER_ADMIN ven todos.
+    - `POST /orders/{id}/pay` **no lo llama el usuario**: solo payment-service, con el header
+      `X-Internal-Token` (ver `payment.yaml`).
+
+    Estados: `CREATED` → `PAID` (pago aprobado) o `CREATED` → `CANCELLED`.
+    Un pedido `PAID` no se puede cancelar, y uno `CANCELLED` no se puede pagar.
+  version: 2.0.0
 
 servers:
   - url: http://localhost:8084
@@ -10,13 +21,21 @@ servers:
 
 tags:
   - name: Orders
-    description: Gestión de pedidos
+  - name: Internal
+    description: Solo para otros servicios
 
 paths:
   /orders:
     post:
       tags: [Orders]
-      summary: Crear pedido
+      summary: Crear un pedido con el carrito actual
+      description: |
+        1. Lee el carrito del usuario en cart-service (con el mismo token).
+        2. Pide a catalog-service el precio vigente de cada producto y calcula el total
+           (los precios guardados en el carrito no se usan).
+        3. Guarda el pedido en `CREATED` y vacía el carrito.
+
+        El id del pedido nuevo viene en el header `Location` (expuesto por CORS).
       security:
         - bearerAuth: []
       requestBody:
@@ -27,44 +46,131 @@ paths:
               $ref: '#/components/schemas/CreateOrderRequest'
       responses:
         '201':
-          description: Pedido creado
-
+          description: Pedido creado (sin cuerpo)
+          headers:
+            Location:
+              description: /orders/{id} del pedido creado
+              schema:
+                type: string
+                example: /orders/96673ffd-e3cd-4c93-8b08-9efed5973223
+        '400':
+          description: Falta `address`, JSON mal formado, o el carrito está vacío
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Falta el token, es inválido, o cart-service lo rechazó
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Algún producto del carrito ya no existe o está inactivo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '502':
+          $ref: '#/components/responses/BadGateway'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
     get:
       tags: [Orders]
       summary: Listar pedidos
+      description: Un CLIENT recibe solo los suyos; ADMIN y SUPER_ADMIN, todos.
       security:
         - bearerAuth: []
       responses:
         '200':
-          description: Lista de pedidos
+          description: Pedidos
           content:
             application/json:
               schema:
                 type: array
                 items:
                   $ref: '#/components/schemas/OrderResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
 
   /orders/{id}:
+    parameters:
+      - $ref: '#/components/parameters/Id'
     get:
       tags: [Orders]
-      summary: Obtener pedido por ID
+      summary: Ver un pedido
       security:
         - bearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
       responses:
         '200':
-          description: Pedido encontrado
+          description: Pedido
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/OrderResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/NotOwner'
         '404':
-          description: Pedido no encontrado
+          $ref: '#/components/responses/NotFound'
+
+  /orders/{id}/cancel:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    post:
+      tags: [Orders]
+      summary: Cancelar un pedido
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Pedido cancelado (sin cuerpo)
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/NotOwner'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: El pedido ya está pagado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /orders/{id}/pay:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    post:
+      tags: [Internal]
+      summary: Marcar un pedido como pagado (solo payment-service)
+      description: |
+        Autenticado con el token interno de servicio, no con un JWT de usuario: un JWT válido,
+        aunque sea de ADMIN, recibe 403.
+      security:
+        - internalToken: []
+      responses:
+        '200':
+          description: Pedido en estado PAID (sin cuerpo)
+        '401':
+          description: Falta el token interno o es incorrecto (sin cuerpo)
+        '403':
+          description: Se envió un JWT de usuario en vez del token interno
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: El pedido no está en CREATED (ya pagado o cancelado)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
 components:
   securitySchemes:
@@ -72,6 +178,59 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
+    internalToken:
+      type: apiKey
+      in: header
+      name: X-Internal-Token
+
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  responses:
+    BadRequest:
+      description: UUID inválido
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Unauthorized:
+      description: Falta el token o es inválido / vencido (sin cuerpo)
+    Forbidden:
+      description: El token no tiene rol CLIENT, ADMIN ni SUPER_ADMIN
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotOwner:
+      description: El pedido es de otro usuario (y el token no es ADMIN ni SUPER_ADMIN)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFound:
+      description: El pedido no existe
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    BadGateway:
+      description: cart-service o catalog-service respondieron con un error inesperado
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    ServiceUnavailable:
+      description: cart-service o catalog-service no responden
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
 
   schemas:
     CreateOrderRequest:
@@ -80,33 +239,55 @@ components:
       properties:
         address:
           type: string
+          example: Calle 123, Bogotá
 
-    OrderItem:
+    OrderItemResponse:
       type: object
       properties:
         productId:
           type: string
+          format: uuid
         quantity:
           type: integer
         price:
           type: number
+          description: Precio unitario de catalog-service al momento de crear el pedido
 
     OrderResponse:
       type: object
       properties:
         id:
           type: string
+          format: uuid
         userId:
           type: string
+          format: uuid
         status:
           type: string
           enum: [CREATED, PAID, CANCELLED]
         items:
           type: array
           items:
-            $ref: '#/components/schemas/OrderItem'
+            $ref: '#/components/schemas/OrderItemResponse'
         total:
           type: number
+          example: 120.00
         createdAt:
+          type: string
+          format: date-time
+
+    ErrorResponse:
+      type: object
+      properties:
+        status:
+          type: integer
+          example: 409
+        error:
+          type: string
+          example: Conflict
+        message:
+          type: string
+          example: Paid orders cannot be cancelled
+        timestamp:
           type: string
           format: date-time

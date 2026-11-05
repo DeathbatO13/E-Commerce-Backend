@@ -1,0 +1,170 @@
+# Render Blueprint: 5 web services (Docker) + 1 Postgres.
+# Dashboard → New → Blueprint → elegir este repo. Render pide al crear los valores marcados con
+# `sync: false` (CORS_ALLOWED_ORIGINS, ADMIN_EMAIL, ADMIN_PASSWORD).
+#
+# Base de datos: el plan free permite una sola instancia de Postgres, así que los 5 servicios
+# comparten la base `ecommerce` con un esquema cada uno (DB_SCHEMA). Flyway crea el esquema y sus
+# tablas al arrancar; ningún servicio lee el esquema de otro.
+#
+# Todo en la misma región: la red privada (fromService → hostport) solo funciona dentro de una región.
+
+envVarGroups:
+  - name: ecommerce-shared
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      # Mismo valor en los 5 servicios; Render lo genera una sola vez (256 bits, base64)
+      - key: JWT_SECRET
+        generateValue: true
+      # Solo lo usan order-service y payment-service (POST /orders/{id}/pay)
+      - key: INTERNAL_SERVICE_TOKEN
+        generateValue: true
+      # Dominio(s) del frontend, separados por coma
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false
+
+databases:
+  - name: ecommerce-db
+    databaseName: ecommerce
+    user: ecommerce
+    plan: free
+    region: oregon
+
+services:
+  - type: web
+    name: auth-service
+    runtime: docker
+    plan: free
+    region: oregon
+    branch: main
+    rootDir: auth-service
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /actuator/health
+    envVars:
+      - fromGroup: ecommerce-shared
+      - key: DB_SCHEMA
+        value: auth
+      - key: DB_HOST
+        fromDatabase: { name: ecommerce-db, property: host }
+      - key: DB_PORT
+        fromDatabase: { name: ecommerce-db, property: port }
+      - key: DB_NAME
+        fromDatabase: { name: ecommerce-db, property: database }
+      - key: SPRING_DATASOURCE_USERNAME
+        fromDatabase: { name: ecommerce-db, property: user }
+      - key: SPRING_DATASOURCE_PASSWORD
+        fromDatabase: { name: ecommerce-db, property: password }
+      # SUPER_ADMIN inicial
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+
+  - type: web
+    name: catalog-service
+    runtime: docker
+    plan: free
+    region: oregon
+    branch: main
+    rootDir: catalog-service
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /actuator/health
+    envVars:
+      - fromGroup: ecommerce-shared
+      - key: DB_SCHEMA
+        value: catalog
+      - key: DB_HOST
+        fromDatabase: { name: ecommerce-db, property: host }
+      - key: DB_PORT
+        fromDatabase: { name: ecommerce-db, property: port }
+      - key: DB_NAME
+        fromDatabase: { name: ecommerce-db, property: database }
+      - key: SPRING_DATASOURCE_USERNAME
+        fromDatabase: { name: ecommerce-db, property: user }
+      - key: SPRING_DATASOURCE_PASSWORD
+        fromDatabase: { name: ecommerce-db, property: password }
+
+  - type: web
+    name: cart-service
+    runtime: docker
+    plan: free
+    region: oregon
+    branch: main
+    rootDir: cart-service
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /actuator/health
+    envVars:
+      - fromGroup: ecommerce-shared
+      - key: DB_SCHEMA
+        value: cart
+      - key: DB_HOST
+        fromDatabase: { name: ecommerce-db, property: host }
+      - key: DB_PORT
+        fromDatabase: { name: ecommerce-db, property: port }
+      - key: DB_NAME
+        fromDatabase: { name: ecommerce-db, property: database }
+      - key: SPRING_DATASOURCE_USERNAME
+        fromDatabase: { name: ecommerce-db, property: user }
+      - key: SPRING_DATASOURCE_PASSWORD
+        fromDatabase: { name: ecommerce-db, property: password }
+      - key: CATALOG_SERVICE_HOSTPORT
+        fromService: { type: web, name: catalog-service, property: hostport }
+
+  - type: web
+    name: order-service
+    runtime: docker
+    plan: free
+    region: oregon
+    branch: main
+    rootDir: order-service
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /actuator/health
+    envVars:
+      - fromGroup: ecommerce-shared
+      - key: DB_SCHEMA
+        value: orders
+      - key: DB_HOST
+        fromDatabase: { name: ecommerce-db, property: host }
+      - key: DB_PORT
+        fromDatabase: { name: ecommerce-db, property: port }
+      - key: DB_NAME
+        fromDatabase: { name: ecommerce-db, property: database }
+      - key: SPRING_DATASOURCE_USERNAME
+        fromDatabase: { name: ecommerce-db, property: user }
+      - key: SPRING_DATASOURCE_PASSWORD
+        fromDatabase: { name: ecommerce-db, property: password }
+      - key: CART_SERVICE_HOSTPORT
+        fromService: { type: web, name: cart-service, property: hostport }
+      - key: CATALOG_SERVICE_HOSTPORT
+        fromService: { type: web, name: catalog-service, property: hostport }
+
+  - type: web
+    name: payment-service
+    runtime: docker
+    plan: free
+    region: oregon
+    branch: main
+    rootDir: payment-service
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /actuator/health
+    envVars:
+      - fromGroup: ecommerce-shared
+      - key: DB_SCHEMA
+        value: payment
+      - key: DB_HOST
+        fromDatabase: { name: ecommerce-db, property: host }
+      - key: DB_PORT
+        fromDatabase: { name: ecommerce-db, property: port }
+      - key: DB_NAME
+        fromDatabase: { name: ecommerce-db, property: database }
+      - key: SPRING_DATASOURCE_USERNAME
+        fromDatabase: { name: ecommerce-db, property: user }
+      - key: SPRING_DATASOURCE_PASSWORD
+        fromDatabase: { name: ecommerce-db, property: password }
+      - key: ORDER_SERVICE_HOSTPORT
+        fromService: { type: web, name: order-service, property: hostport }

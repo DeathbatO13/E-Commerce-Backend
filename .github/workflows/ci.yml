@@ -1,0 +1,156 @@
+name: CI
+
+on:
+  push:
+    branches: [develop, main]
+  pull_request:
+    branches: [develop, main]
+  workflow_dispatch: # corre los 5 servicios a mano
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # Decide qué servicios probar según los archivos cambiados. No se usa `paths` en el trigger
+  # porque con eso el workflow no corre y el check "ci" (requerido en la rama) quedaría pendiente.
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      services: ${{ steps.detect.outputs.services }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - id: detect
+        env:
+          EVENT: ${{ github.event_name }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.sha }}
+        run: |
+          ALL="auth-service cart-service catalog-service order-service payment-service"
+
+          if [ "$EVENT" = "pull_request" ]; then
+            RANGE="$PR_BASE...$PR_HEAD"
+          elif [ "$EVENT" = "push" ] && git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+            RANGE="$BEFORE..$AFTER"
+          else
+            RANGE="" # workflow_dispatch, rama nueva o force-push: se prueba todo
+          fi
+
+          if [ -z "$RANGE" ]; then
+            CHANGED="$ALL"
+          else
+            FILES=$(git diff --name-only "$RANGE")
+            echo "Archivos cambiados:"; echo "$FILES"
+            if echo "$FILES" | grep -q '^\.github/workflows/'; then
+              CHANGED="$ALL" # si cambia el propio CI, se prueba todo
+            else
+              CHANGED=""
+              for s in $ALL; do
+                echo "$FILES" | grep -q "^$s/" && CHANGED="$CHANGED $s"
+              done
+            fi
+          fi
+
+          JSON=$(printf '%s\n' $CHANGED | jq -R . | jq -cs 'map(select(. != ""))')
+          echo "Servicios a probar: $JSON"
+          echo "services=$JSON" >> "$GITHUB_OUTPUT"
+
+  test:
+    needs: changes
+    if: needs.changes.outputs.services != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service: ${{ fromJSON(needs.changes.outputs.services) }}
+    defaults:
+      run:
+        working-directory: ${{ matrix.service }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+          cache-dependency-path: ${{ matrix.service }}/pom.xml
+
+      # verify = compila, corre los tests (H2, sin Postgres) y aplica el umbral de JaCoCo
+      - name: mvn verify
+        run: mvn -B -ntp verify
+
+      - name: Reporte de cobertura
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-${{ matrix.service }}
+          path: ${{ matrix.service }}/target/site/jacoco/
+          if-no-files-found: ignore
+
+      - name: Reportes de tests (si falló)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: surefire-${{ matrix.service }}
+          path: ${{ matrix.service }}/target/surefire-reports/
+          if-no-files-found: ignore
+
+  # Publica la imagen de cada servicio cambiado en ghcr.io al hacer push a main
+  docker:
+    needs: [changes, test]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.changes.outputs.services != '[]'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        service: ${{ fromJSON(needs.changes.outputs.services) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Nombre de la imagen
+        id: image
+        run: echo "name=ghcr.io/${GITHUB_REPOSITORY,,}-${{ matrix.service }}" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.service }}
+          push: true
+          tags: |
+            ${{ steps.image.outputs.name }}:latest
+            ${{ steps.image.outputs.name }}:${{ github.sha }}
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+
+  # Único check a marcar como requerido en la protección de ramas: pasa si los tests pasaron
+  # o si no hubo servicios que probar (job "test" omitido).
+  ci:
+    needs: [changes, test]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resultado
+        env:
+          CHANGES: ${{ needs.changes.result }}
+          TEST: ${{ needs.test.result }}
+        run: |
+          echo "changes=$CHANGES test=$TEST"
+          [ "$CHANGES" = "success" ] && { [ "$TEST" = "success" ] || [ "$TEST" = "skipped" ]; }

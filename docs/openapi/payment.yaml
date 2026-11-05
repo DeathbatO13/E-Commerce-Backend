@@ -45,7 +45,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '401':
-          description: Falta el token o es inválido
+          description: Falta el token o es inválido / vencido (sin cuerpo)
         '403':
           description: El pedido pertenece a otro usuario
           content:
